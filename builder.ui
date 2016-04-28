@@ -2,13 +2,19 @@
 <!-- Generated with glade 3.20.0 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
+  <object class="GtkAdjustment" id="adjustment1">
+    <property name="upper">1000</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
   <object class="GtkWindow" id="window">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="border_width">10</property>
-    <property name="title">RustMap</property>
-    <property name="default_width">600</property>
-    <property name="default_height">400</property>
+    <property name="window_position">center</property>
+    <property name="default_width">800</property>
+    <property name="default_height">600</property>
+    <property name="gravity">center</property>
     <child>
       <object class="GtkBox">
         <property name="visible">True</property>
@@ -163,15 +169,16 @@
           </packing>
         </child>
         <child>
-          <object class="GtkDrawingArea" id="mapArea">
+          <object class="GtkDrawingArea" id="image">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="events">GDK_POINTER_MOTION_MASK | GDK_STRUCTURE_MASK</property>
+            <property name="hexpand">True</property>
+            <property name="vexpand">True</property>
           </object>
           <packing>
             <property name="expand">True</property>
             <property name="fill">True</property>
-            <property name="position">1</property>
+            <property name="position">2</property>
           </packing>
         </child>
         <child>
@@ -183,7 +190,34 @@
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">2</property>
+            <property name="position">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScrolledWindow">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="hadjustment">adjustment1</property>
+            <property name="shadow_type">in</property>
+            <property name="min_content_height">64</property>
+            <child>
+              <object class="GtkViewport">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="shadow_type">out</property>
+                <child>
+                  <object class="GtkDrawingArea" id="tileset">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">4</property>
           </packing>
         </child>
       </object>
