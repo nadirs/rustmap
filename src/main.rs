@@ -1,4 +1,5 @@
 mod rustmap;
+mod constants;
 
 extern crate gtk;
 extern crate gdk;
@@ -12,12 +13,14 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use gtk::prelude::*;
-use gtk::{Builder, Button, ButtonsType, DialogFlags, EventBox, DrawingArea, Image, Label, Layout, MessageType, MessageDialog, Window, WindowType};
+use gtk::{Builder, DrawingArea, Label, Window};
 use gdk::prelude::*;
 use gdk::{Gravity, EventTouch, EventType, EventMask};
 use gdk_pixbuf::{Pixbuf, InterpType};
 use cairo::Context;
-//
+
+use constants::*;
+
 // make moving clones into closures more convenient
 macro_rules! clone {
     (@param _) => ( _ );
@@ -36,12 +39,6 @@ macro_rules! clone {
     );
 }
 
-const TILE_SIZE: usize = 8;
-const TILES_IN_ROW: usize = 4;
-const TILES_IN_COL: usize = 4;
-const BLOCK_SIZE: usize = TILE_SIZE * TILES_IN_ROW;
-const TILES_IN_BLOCK: usize = TILES_IN_ROW * TILES_IN_COL;
-
 fn main () {
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
@@ -49,39 +46,35 @@ fn main () {
     }
 
     let mut argv = std::env::args();
-    //let tileset_path = argv.nth(1).unwrap_or("../../tilesets/Tset00_GFX.png".to_string());
     let tileset_path = argv.nth(1).unwrap_or("../../../gfx/tilesets/overworld.t2.png".to_string());
     let blockset_path = argv.nth(2).unwrap_or("../../../gfx/blocksets/overworld.bst".to_string());
-    println!("{}", tileset_path);
-    println!("{}", blockset_path);
 
     let mut blockset: Vec<u8> = Vec::new();
     let mut blockset_file = File::open(&blockset_path).unwrap();
     blockset_file.read_to_end(&mut blockset);
 
     let builder = Builder::new_from_file("builder.ui");
-
     let window: Window = builder.get_object("window").unwrap();
-
     let image: DrawingArea = builder.get_object("image").unwrap();
-    let tileset: DrawingArea = builder.get_object("tileset").unwrap();
-    let bg = gdk::RGBA { red: 1., green: 0., blue: 0., alpha: 1. };
-
+    let lblCoords: Label = builder.get_object("lblCoords").unwrap();
 
     let pix = Pixbuf::new_from_file(&tileset_path).unwrap();
-    let mask = gdk_sys::GDK_POINTER_MOTION_MASK | gdk_sys::GDK_BUTTON_PRESS_MASK | gdk_sys::GDK_BUTTON1_MOTION_MASK;
+    let tileset: DrawingArea = builder.get_object("tileset").unwrap();
+    let mask = gdk_sys::GDK_POINTER_MOTION_MASK
+        | gdk_sys::GDK_BUTTON_PRESS_MASK
+        | gdk_sys::GDK_BUTTON1_MOTION_MASK
+        // | gdk_sys::GDK_ENTER_NOTIFY_MASK // don't need this for the moment
+        | gdk_sys::GDK_LEAVE_NOTIFY_MASK;
     tileset.add_events(mask.bits() as i32);
-
-    let lblCoords: Label = builder.get_object("lblCoords").unwrap();
 
     let surface = cairo::ImageSurface::create(cairo::Format::Rgb24, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
     let context = cairo::Context::new(&surface);
 
-    let mut x: u8 = 0;
-    let mut selected: u8 = 0;
-    let mut hovered: u8 = 0;
-    let mut y: u8 = 0;
-    let mut cell = Rc::new(RefCell::new((x, y, selected, hovered)));
+    let x: u8 = 0;
+    let selected: u8 = 0;
+    let hovered: Option<u8> = None;
+    let y: u8 = 0;
+    let cell = Rc::new(RefCell::new((x, y, selected, hovered)));
 
     // UI initialization.
     window.set_gravity(Gravity::Center);
@@ -93,16 +86,27 @@ fn main () {
         Inhibit(false)
     });
 
+    tileset.connect_leave_notify_event(clone!(cell => move |el, ev| {
+        let (_, _, _, ref mut hovered) = *cell.borrow_mut();
+        if let Some(hovered_inner) = *hovered {
+            redraw_tile(el, hovered_inner as usize);
+        }
+        *hovered = None;
+        Inhibit::default()
+    }));
+
     tileset.connect_motion_notify_event(clone!(cell => move |el, ev| {
-        let (ref mut x, ref mut y, ref mut selected, ref mut hovered) = *cell.borrow_mut();
+        let (ref mut x, _, _, ref mut hovered) = *cell.borrow_mut();
         let pos = get_event_pos(ev.get_position());
         let (lx, ly) = pos;
         *x = lx;
-        if lx != *hovered {
-            el.queue_draw_area((*hovered as usize * BLOCK_SIZE) as i32, 0, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
-            *hovered = *x;
-            el.queue_draw_area((*hovered as usize * BLOCK_SIZE) as i32, 0, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
+        if let Some(hovered_inner) = *hovered {
+            if lx != hovered_inner {
+                redraw_tile(el, hovered_inner as usize);
+            }
         }
+        *hovered = Some(*x);
+        redraw_tile(el, *x as usize);
 
         lblCoords.set_label(&format_event_pos(pos));
         Inhibit::default()
@@ -113,19 +117,20 @@ fn main () {
     }));
 
     tileset.connect_button_press_event(clone!(cell => move|el, ev| {
-        let (ref mut x, ref mut y, ref mut selected, ref mut hovered) = *cell.borrow_mut();
+        let (ref mut x, _, ref mut selected, _) = *cell.borrow_mut();
         let pos = get_event_pos(ev.get_position());
-        let (lx, ly) = pos;
+        let (lx, _) = pos;
         *x = lx;
-        *selected = *x;
-        *y = ly;
-        println!("Clicked at {:?}", &format_event_pos(pos));
-        el.queue_draw(); // replace with queue_draw_area (old block and new block)
+        if lx != *selected {
+            redraw_tile(el, *selected as usize);
+            *selected = *x;
+            redraw_tile(el, *selected as usize);
+        }
 
         Inhibit::default()
     }));
 
-    tileset.set_size_request(blockset.len() as i32 * 4, BLOCK_SIZE as i32);
+    tileset.set_size_request(blockset.len() as i32 * (TILE_SIZE / 4) as i32, BLOCK_SIZE as i32);
     tileset.connect_draw(clone!(cell => move |el, context| {
         let tileset_width = pix.get_width() / 8 as i32;
 
@@ -136,50 +141,54 @@ fn main () {
 
         for (i, b_) in blockset.iter().enumerate() {
             let b = *b_ as i32;
-            let mut tile = pix.new_subpixbuf(8 * (b % tileset_width), 8 * ((b / tileset_width) as i32), 8, 8).scale_simple(TILE_SIZE as i32, TILE_SIZE as i32, InterpType::Nearest).unwrap();
+            let mut tile = pix.new_subpixbuf(8 * (b % tileset_width), 8 * ((b / tileset_width) as i32), 8, 8);
 
-            if (i / TILES_IN_BLOCK) as usize == *selected as usize {
+            if hovered.is_some() && hovered.map_or(false, |hovered_inner| { (i / TILES_IN_BLOCK) as usize == hovered_inner as usize }) {
                 let mut pxs: Vec<u8> = Vec::new();
                 unsafe {
                     for (i, b) in tile.get_pixels().iter().enumerate() {
                         let b1: u8 = match *b {
                             170 => match i % 3 {
-                                0 => 0,
-                                1 => 200,
-                                2 => 0,
-                                _ => panic!("foobar")
+                                0 => 60,
+                                1 => 120,
+                                _ => 140,
                             },
                             85 => match i % 3 {
-                                0 => 0,
-                                1 => 100,
-                                2 => 0,
-                                _ => panic!("fizzbuzz")
+                                0 => 100,
+                                1 => 20,
+                                _ => 50,
                             },
-                            x => x
-                        };
-                        pxs.push(b1);
-                    }
-                };
-                let ctile = Pixbuf::new_from_vec(pxs, tile.get_colorspace(), false, tile.get_bits_per_sample(), tile.get_width(), tile.get_height(), tile.get_rowstride());
-                tile = ctile;
-            }
-
-            if (i / TILES_IN_BLOCK) as usize == *hovered as usize {
-                let mut pxs: Vec<u8> = Vec::new();
-                unsafe {
-                    for (i, b) in tile.get_pixels().iter().enumerate() {
-                        let b1: u8 = match *b {
-                            170 => match i % 3 {
+                            255 => match i % 3 {
                                 0 => 255,
-                                1 => 0,
-                                2 => 0,
-                                _ => panic!("foobar")
+                                1 => 255,
+                                _ => 100,
+                            },
+                            x => x
+                        };
+                        pxs.push(b1);
+                    }
+                };
+                let ctile = Pixbuf::new_from_vec(pxs, tile.get_colorspace(), false, tile.get_bits_per_sample(), tile.get_width(), tile.get_height(), tile.get_rowstride());
+                tile = ctile;
+            } else if (i / TILES_IN_BLOCK) as usize == *selected as usize {
+                let mut pxs: Vec<u8> = Vec::new();
+                unsafe {
+                    for (i, b) in tile.get_pixels().iter().enumerate() {
+                        let b1: u8 = match *b {
+                            170 => match i % 3 {
+                                0 => 60,
+                                1 => 180,
+                                _ => 60,
                             },
                             85 => match i % 3 {
-                                0 => 130,
-                                1 => 0,
-                                2 => 0,
-                                _ => panic!("fizzbuzz")
+                                0 => 20,
+                                1 => 50,
+                                _ => 80,
+                            },
+                            255 => match i % 3 {
+                                0 => 220,
+                                1 => 250,
+                                _ => 140,
                             },
                             x => x
                         };
@@ -189,38 +198,22 @@ fn main () {
                 let ctile = Pixbuf::new_from_vec(pxs, tile.get_colorspace(), false, tile.get_bits_per_sample(), tile.get_width(), tile.get_height(), tile.get_rowstride());
                 tile = ctile;
             }
+            tile = tile.scale_simple(TILE_SIZE as i32, TILE_SIZE as i32, InterpType::Nearest).unwrap();
 
-            context.set_source_pixbuf(&tile, (((i % 4) * 8) + (i / 16) * BLOCK_SIZE) as f64, ((((i / 4) % 4) as i32) * 8) as f64);
+            context.set_source_pixbuf(&tile, (((i % 4) * TILE_SIZE) + (i / 16) * BLOCK_SIZE) as f64, ((((i / 4) % 4) as i32) * TILE_SIZE as i32) as f64);
             context.paint();
         }
         context.save();
         Inhibit::default()
     }));
 
-    /*
-    tileset.connect_draw(move |el, cr| {
-        //let drawable = el.get_window().unwrap();
-        //let context = Context::create_from_window(&drawable);
-
-        let tileset_width = pix.get_width() / 8 as i32;
-        for (i, b_) in blockset.iter().enumerate() {
-            let b = *b_ as i32;
-            let tile = pix.new_subpixbuf(8 * (b % tileset_width), 8 * ((b / tileset_width) as i32), 8, 8).scale_simple(16, 16, InterpType::Nearest).unwrap();
-            el.set_source_pixbuf(&pix, (((i % 4) * 16) + (i / 16) * 64) as f64, ((((i / 4) % 4) as i32) * 16) as f64);
-            break;
-        }
-        Inhibit::default()
-    });
-    */
-
     // Run the main loop.
     gtk::main();
 }
 
-/**
- * on paint: read map data and draw tiles according to it
- * on click: update map data with the correct tile id on the corresponding coords
- */
+fn redraw_tile<W: gtk::WidgetExt>(el: &W, index: usize) {
+    el.queue_draw_area((index * BLOCK_SIZE) as i32, 0, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
+}
 
 fn get_event_pos(pos: (f64, f64)) -> (u8, u8) {
     let (x, y) = pos;
