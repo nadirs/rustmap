@@ -46,6 +46,7 @@ fn main () {
     }
 
     let mut argv = std::env::args();
+    let map_path = argv.nth(1).unwrap_or("../../../maps/pallettown.blk".to_string());
     let tileset_path = argv.nth(1).unwrap_or("../../../gfx/tilesets/overworld.t2.png".to_string());
     let blockset_path = argv.nth(2).unwrap_or("../../../gfx/blocksets/overworld.bst".to_string());
 
@@ -53,19 +54,19 @@ fn main () {
     let mut blockset_file = File::open(&blockset_path).unwrap();
     blockset_file.read_to_end(&mut blockset);
 
+    let mut mapset: Vec<u8> = Vec::new();
+    let mut mapset_file = File::open(&map_path).unwrap();
+    mapset_file.read_to_end(&mut mapset);
+
     let builder = Builder::new_from_file("builder.ui");
     let window: Window = builder.get_object("window").unwrap();
-    let image: DrawingArea = builder.get_object("image").unwrap();
-    let lblCoords: Label = builder.get_object("lblCoords").unwrap();
+    let maparea: DrawingArea = builder.get_object("image").unwrap();
+    let lbl_coords: Label = builder.get_object("lblCoords").unwrap();
 
     let pix = Pixbuf::new_from_file(&tileset_path).unwrap();
     let tileset: DrawingArea = builder.get_object("tileset").unwrap();
-    let mask = gdk_sys::GDK_POINTER_MOTION_MASK
-        | gdk_sys::GDK_BUTTON_PRESS_MASK
-        | gdk_sys::GDK_BUTTON1_MOTION_MASK
-        // | gdk_sys::GDK_ENTER_NOTIFY_MASK // don't need this for the moment
-        | gdk_sys::GDK_LEAVE_NOTIFY_MASK;
-    tileset.add_events(mask.bits() as i32);
+    maparea.add_events(drawing_area_mask_bits());
+    tileset.add_events(drawing_area_mask_bits());
 
     let surface = cairo::ImageSurface::create(cairo::Format::Rgb24, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
     let context = cairo::Context::new(&surface);
@@ -108,11 +109,7 @@ fn main () {
         *hovered = Some(*x);
         redraw_tile(el, *x as usize);
 
-        lblCoords.set_label(&format_event_pos(pos));
-        Inhibit::default()
-    }));
-
-    image.connect_button_press_event(clone!(cell => move |el, ev| {
+        lbl_coords.set_label(&format_event_pos(pos));
         Inhibit::default()
     }));
 
@@ -130,11 +127,34 @@ fn main () {
         Inhibit::default()
     }));
 
+    let (maparea_w, maparea_h) = (10, 9);
+    maparea.set_size_request(maparea_w * BLOCK_SIZE as i32, maparea_h * BLOCK_SIZE as i32);
+    let mapcell = Rc::new(RefCell::new((mapset, blockset.clone())));
+    let pix2 = pix.clone();
+
+    maparea.connect_button_press_event(move |el, ev| {
+        //el.queue_draw();
+        Inhibit::default()
+    });
+
+    maparea.connect_draw(clone!(mapcell => move |el, context| {
+        let (ref mut mapset, ref mut blockset) = *mapcell.borrow_mut();
+        for (i, b_) in mapset.iter().enumerate() {
+            let b = *b_ as usize;
+            let coords: (u8, u8) = ((i % maparea_w as usize) as u8, (i / maparea_w as usize) as u8);
+            draw_tile_block(context, &pix2, &blockset, b, coords);
+        }
+
+        context.set_source_pixbuf(&pix2, (maparea_w as usize * (BLOCK_SIZE + 2)) as f64, 0.);
+        context.paint();
+        Inhibit::default()
+    }));
+
+
     tileset.set_size_request(blockset.len() as i32 * (TILE_SIZE / 4) as i32, BLOCK_SIZE as i32);
     tileset.connect_draw(clone!(cell => move |el, context| {
-        let tileset_width = pix.get_width() / 8 as i32;
-
         let (ref mut x, ref mut y, ref mut selected, ref mut hovered) = *cell.borrow_mut();
+        let tileset_width = pix.get_width() / 8 as i32;
 
         el.override_background_color(gtk::StateFlags::all(), &gdk_sys::GdkRGBA { red: 255., green: 1., blue: 0., alpha: 1. });
         context.paint();
@@ -143,6 +163,7 @@ fn main () {
             let b = *b_ as i32;
             let mut tile = pix.new_subpixbuf(8 * (b % tileset_width), 8 * ((b / tileset_width) as i32), 8, 8);
 
+            // tile = process_hover_and_select(&tile, *hovered, *selected); // XXX move this block in a function
             if hovered.is_some() && hovered.map_or(false, |hovered_inner| { (i / TILES_IN_BLOCK) as usize == hovered_inner as usize }) {
                 let mut pxs: Vec<u8> = Vec::new();
                 unsafe {
@@ -209,6 +230,23 @@ fn main () {
 
     // Run the main loop.
     gtk::main();
+}
+
+pub fn draw_tile_block(context: &Context, pix: &Pixbuf, blockset: &Vec<u8>, index: usize, coords: (u8, u8)) {
+    let (mut tile_bytes, _) = blockset.split_at(index * TILES_IN_BLOCK).1.split_at(16);
+
+    let tileset_width = pix.get_width() / 8;
+    let x0: f64 = (coords.0 as usize * BLOCK_SIZE) as f64;
+    let y0: f64 = (coords.1 as usize * BLOCK_SIZE) as f64;
+
+    for (i, b_) in tile_bytes.iter().enumerate() {
+        let b = *b_;
+        let tile = pix.new_subpixbuf(8 * (b as i32 % tileset_width), 8 * ((b as i32 / tileset_width) as i32), 8, 8)
+            .scale_simple(TILE_SIZE as i32, TILE_SIZE as i32, InterpType::Nearest).unwrap();
+
+        context.set_source_pixbuf(&tile, x0 + ((i % 4) * TILE_SIZE) as f64, y0 + (((i / 4) as i32) * TILE_SIZE as i32) as f64);
+        context.paint();
+    }
 }
 
 fn redraw_tile<W: gtk::WidgetExt>(el: &W, index: usize) {
