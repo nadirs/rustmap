@@ -4,8 +4,8 @@ version = "0.1.0"
 authors = ["Nadir Sampaoli <nadirsampaoli@gmail.com>"]
 
 [dependencies]
-gtk = { version = "0.0.7", features = ["v3_16"] }
-gdk = "*"
-gdk-sys = "*"
-gdk-pixbuf = "*"
-cairo-rs = "*"
+gtk = { version = "0.1.0", features = ["v3_16"] }
+gdk = "0.5.0"
+gdk-sys = "0.3.1"
+gdk-pixbuf = "0.1.0"
+cairo-rs = { version = "0.1.0", features = ["v1_12"] }
