@@ -7,6 +7,9 @@ mod position;
 mod maparea;
 mod tileset;
 
+#[macro_use]
+extern crate serde_derive;
+extern crate toml;
 extern crate gtk;
 extern crate gdk;
 extern crate gdk_sys;
@@ -33,21 +36,42 @@ fn get_bytes_from_filepath(path: &str) -> Option<Vec<u8>> {
     }).ok()
 }
 
+#[derive(Debug,Deserialize)]
+struct Config {
+    recent: RecentSettings
+}
+
+#[derive(Debug,Deserialize)]
+struct RecentSettings {
+    map_path: Option<String>,
+    tileset_path: Option<String>,
+    blockset_path: Option<String>,
+}
+
 fn main () {
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
         return;
     }
 
+    let mut config_file = File::open("rustmap.toml").unwrap();
+    let mut config_string = String::new();
+    if let Err(err) = config_file.read_to_string(&mut config_string) {
+        println!("{}", err);
+        return;
+    }
+    let config: Config = toml::from_str(&mut config_string).unwrap();
+
     let mut argv = std::env::args();
-    let map_path = argv.nth(1).unwrap_or("../../../maps/viridiancity.blk".to_string());
-    let tileset_path = argv.nth(1).unwrap_or("../../../gfx/tilesets/overworld.t2.png".to_string());
-    let blockset_path = argv.nth(2).unwrap_or("../../../gfx/blocksets/overworld.bst".to_string());
+    let map_path = argv.nth(1).or(config.recent.map_path).expect("No map provided");
+    let tileset_path = argv.nth(2).or(config.recent.tileset_path).expect("No tileset provided");
+    let blockset_path = argv.nth(3).or(config.recent.blockset_path).expect("no blockset provided");
 
     let mut mapset: Vec<u8> = Vec::new();
     let mut mapset_file = File::open(&map_path).unwrap();
     if let Err(err) = mapset_file.read_to_end(&mut mapset) {
         println!("{}", err);
+        return;
     }
 
     let builder = Builder::new_from_file("builder.ui");

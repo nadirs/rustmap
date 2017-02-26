@@ -13,4 +13,5 @@
 Cargo.lock
 /target/
 
-
+# rustmap
+rustmap.toml

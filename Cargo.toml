@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Nadir Sampaoli <nadirsampaoli@gmail.com>"]
 
 [dependencies]
+toml = "*"
+serde = "0.9"
+serde_derive = "0.9"
 gtk = { version = "0.1.0", features = ["v3_16"] }
 gdk = "0.5.0"
 gdk-sys = "0.3.1"
