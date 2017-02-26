@@ -189,12 +189,25 @@ impl Maparea {
         let block_index = block_x + block_y * self.width as usize;
         assert!(block_index < self.mapset.len());
 
+        match ev.as_ref().button {
+            1 => self.button_press_left(el, block_index),
+            3 => self.button_press_right(el, block_index),
+            _ => (),
+        }
+    }
+
+    pub fn button_press_left(&mut self, el: &DrawingArea, block_index: usize) {
         let selected_block = self.tileset.borrow().selected;
         if let Some(selected_block_index) = selected_block {
             self.update_map_block(block_index, selected_block_index);
             let (x, y) = self.coords(block_index);
             el.queue_draw_area(x as i32, y as i32, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
         }
+    }
+
+    pub fn button_press_right(&mut self, _: &DrawingArea, block_index: usize) {
+        let tile_index = self.mapset[block_index];
+        self.tileset.borrow_mut().select_tile_at(tile_index);
     }
 }
 
