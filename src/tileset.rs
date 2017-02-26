@@ -21,7 +21,7 @@ use position::*;
 pub struct Tileset {
     width: i32,
     height: i32,
-    selected: Option<u8>,
+    pub selected: Option<u8>,
     hovered: Option<u8>,
     pix_cache: Pixbuf,
     palette: RgbPalette,
@@ -65,7 +65,7 @@ impl Tileset {
             Inhibit::default()
         }));
 
-        widget.connect_draw(clone!(cell => move |el, context| {
+        widget.connect_draw(clone!(cell => move |_, context| {
             cell.borrow_mut().paint(&context);
             Inhibit::default()
         }));
@@ -103,8 +103,8 @@ impl Tileset {
         Pixbuf::new_from_vec(data, 0, false, 8, width, height, width * 3)
     }
 
-    pub fn coords(&self, index: u8) -> (usize, usize) {
-        ((index as usize * BLOCK_SIZE) % self.width as usize, (index as usize * BLOCK_SIZE) / self.width as usize)
+    pub fn coords(&self, index: u8) -> (i32, i32) {
+        ((index as i32 * BLOCK_SIZE as i32) % self.width as i32, (index as i32 * BLOCK_SIZE as i32) / self.width as i32)
     }
 
     pub fn select_tile_at(&mut self, index: u8) {
@@ -140,24 +140,22 @@ impl Tileset {
 
     fn paint_tile_with_palette(&self, context: &cairo::Context, index: u8, palette: RgbPalette) {
         let (x0, y0, x1, y1) = context.clip_extents();
-        let width = max(0, min(self.pix_cache.get_width(), x1 as i32) - x0 as i32);
-        let height = max(0, min(self.pix_cache.get_height(), y1 as i32) - y0 as i32);
 
         let (sel_x, sel_y) = self.coords(index);
-        let sel_x1 = sel_x + BLOCK_SIZE;
-        let sel_y1 = sel_y + BLOCK_SIZE;
+        let sel_x1 = sel_x + BLOCK_SIZE as i32;
+        let sel_y1 = sel_y + BLOCK_SIZE as i32;
 
-        let within_left   = sel_x  >= x0 as usize && sel_x  <= x1 as usize;
-        let within_right  = sel_x1 >= x0 as usize && sel_x1 <= x1 as usize;
-        let within_top    = sel_y  >= y0 as usize && sel_y  <= y1 as usize;
-        let within_bottom = sel_y  >= y0 as usize && sel_y  <= y1 as usize;
+        let within_left   = sel_x  >= x0 as i32 && sel_x  <= x1 as i32;
+        let within_right  = sel_x1 >= x0 as i32 && sel_x1 <= x1 as i32;
+        let within_top    = sel_y  >= y0 as i32 && sel_y  <= y1 as i32;
+        let within_bottom = sel_y  >= y0 as i32 && sel_y  <= y1 as i32;
 
         if (within_left || within_right) && (within_top || within_bottom) {
-            let x = max(sel_x, x0 as usize);
-            let y = max(sel_y, y0 as usize);
+            let x = max(sel_x, x0 as i32);
+            let y = max(sel_y, y0 as i32);
 
-            let width = min(sel_x1, x1 as usize) - x;
-            let height = min(sel_y1, y1 as usize) - y;
+            let width = min(sel_x1, x1 as i32) - x;
+            let height = min(sel_y1, y1 as i32) - y;
 
             if width > 0 && height > 0 {
                 let subpix = self.pix_cache.new_subpixbuf(x as i32, y as i32, width as i32, height as i32);
@@ -181,7 +179,6 @@ impl Tileset {
 
         if let Some(old_hovered) = self.hovered {
             if lx != old_hovered {
-                println!("{:?}", (old_hovered, lx));
                 let (x, y) = self.coords(old_hovered);
                 el.queue_draw_area(x as i32, y as i32, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
 
