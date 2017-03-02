@@ -25,10 +25,11 @@ pub struct Tileset {
     hovered: Option<u8>,
     pix_cache: Pixbuf,
     palette: RgbPalette,
+    widget: DrawingArea,
 }
 
 impl Tileset {
-    pub fn new(width: i32, height: i32, pix: &Pixbuf, blockset: &[u8]) -> Self {
+    pub fn new(width: i32, height: i32, pix: &Pixbuf, blockset: &[u8], widget: DrawingArea) -> Self {
         let tileset_pix_cache = Self::build_tileset_pix(width, height, pix, blockset);
         Tileset {
             width: width,
@@ -37,38 +38,42 @@ impl Tileset {
             hovered: None,
             pix_cache: tileset_pix_cache,
             palette: BASE_PALETTE,
+            widget: widget,
         }
     }
 
-    pub fn from_data(blockset: &Vec<u8>, widget: &DrawingArea, pix: &Pixbuf) -> Rc<RefCell<Self>> {
+    pub fn from_data(widget: DrawingArea, blockset: &Vec<u8>, pix: &Pixbuf) -> Rc<RefCell<Self>> {
         widget.add_events(drawing_area_mask_bits!());
 
         let width = blockset.len() as i32 * (TILE_SIZE as i32 / 4) as i32;
         let height = BLOCK_SIZE as i32;
         widget.set_size_request(width, height);
 
-        let tileset = Tileset::new(width, height, pix, blockset);
+        let tileset = Tileset::new(width, height, pix, blockset, widget);
         let cell = Rc::new(RefCell::new(tileset));
 
-        widget.connect_leave_notify_event(clone!(cell => move |el, ev| {
-            cell.borrow_mut().leave_notify(el, ev);
-            Inhibit::default()
-        }));
+        {
+            let ref widget = cell.borrow().widget;
+            widget.connect_leave_notify_event(clone!(cell => move |el, ev| {
+                cell.borrow_mut().leave_notify(el, ev);
+                Inhibit::default()
+            }));
 
-        widget.connect_motion_notify_event(clone!(cell => move |el, ev| {
-            cell.borrow_mut().motion_notify(el, ev);
-            Inhibit::default()
-        }));
+            widget.connect_motion_notify_event(clone!(cell => move |el, ev| {
+                cell.borrow_mut().motion_notify(el, ev);
+                Inhibit::default()
+            }));
 
-        widget.connect_button_press_event(clone!(cell => move|el, ev| {
-            cell.borrow_mut().button_press(el, ev);
-            Inhibit::default()
-        }));
+            widget.connect_button_press_event(clone!(cell => move|el, ev| {
+                cell.borrow_mut().button_press(el, ev);
+                Inhibit::default()
+            }));
 
-        widget.connect_draw(clone!(cell => move |_, context| {
-            cell.borrow_mut().paint(&context);
-            Inhibit::default()
-        }));
+            widget.connect_draw(clone!(cell => move |_, context| {
+                cell.borrow_mut().paint(&context);
+                Inhibit::default()
+            }));
+        }
 
         cell
     }

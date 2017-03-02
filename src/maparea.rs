@@ -26,10 +26,11 @@ pub struct Maparea {
     hovered: Option<usize>,
     pix_cache: Pixbuf,
     palette: RgbPalette,
+    pub widget: DrawingArea,
 }
 
 impl Maparea {
-    pub fn new(width: u8, height: u8, mapset: Vec<u8>, tileset: Rc<RefCell<Tileset>>) -> Self {
+    pub fn new(widget: DrawingArea, width: u8, height: u8, mapset: Vec<u8>, tileset: Rc<RefCell<Tileset>>) -> Self {
         let pix_cache = Self::static_build_pix(width as i32 * BLOCK_SIZE as i32, height as i32 * BLOCK_SIZE as i32, &mapset, &*tileset.borrow());
 
         Maparea {
@@ -40,7 +41,33 @@ impl Maparea {
             hovered: None,
             pix_cache: pix_cache,
             palette: BASE_PALETTE,
+            widget: widget,
         }
+    }
+
+    pub fn from_data(widget: DrawingArea, width: u8, height: u8, mapset: Vec<u8>, tileset: Rc<RefCell<Tileset>>) -> Rc<RefCell<Self>> {
+        widget.add_events(drawing_area_mask_bits!());
+        widget.set_size_request(width as i32 * BLOCK_SIZE as i32, height as i32 * BLOCK_SIZE as i32);
+
+        let maparea = Maparea::new(widget, 20, 18, mapset, tileset);
+        let cell = Rc::new(RefCell::new(maparea));
+
+        cell.borrow().widget.connect_motion_notify_event(clone!(cell => move |el, ev| {
+            cell.borrow_mut().motion_notify(el, ev);
+            Inhibit::default()
+        }));
+
+        cell.borrow().widget.connect_button_press_event(clone!(cell => move|el, ev| {
+            cell.borrow_mut().button_press(el, ev);
+            Inhibit::default()
+        }));
+
+        cell.borrow().widget.connect_draw(clone!(cell => move |_, context| {
+            cell.borrow_mut().paint(&context);
+            Inhibit::default()
+        }));
+
+        cell
     }
 
     fn static_coords(index: usize, width: i32, _: i32) -> (i32, i32) {
@@ -209,26 +236,4 @@ impl Maparea {
         let tile_index = self.mapset[block_index];
         self.tileset.borrow_mut().select_tile_at(tile_index);
     }
-}
-
-pub fn connect_events(maparea: Maparea, widget: &DrawingArea) {
-    widget.add_events(drawing_area_mask_bits!());
-    widget.set_size_request(maparea.width as i32 * BLOCK_SIZE as i32, maparea.height as i32 * BLOCK_SIZE as i32);
-
-    let cell = Rc::new(RefCell::new(maparea));
-
-    widget.connect_motion_notify_event(clone!(cell => move |el, ev| {
-        cell.borrow_mut().motion_notify(el, ev);
-        Inhibit::default()
-    }));
-
-    widget.connect_button_press_event(clone!(cell => move|el, ev| {
-        cell.borrow_mut().button_press(el, ev);
-        Inhibit::default()
-    }));
-
-    widget.connect_draw(clone!(cell => move |_, context| {
-        cell.borrow_mut().paint(&context);
-        Inhibit::default()
-    }));
 }

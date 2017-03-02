@@ -82,17 +82,12 @@ fn main () {
 
     let blockset: Vec<u8> = get_bytes_from_filepath(&blockset_path).unwrap();
     let tileset_pix = Pixbuf::new_from_file(&tileset_path).unwrap();
-
-    // Rc<RefCell<Tileset>>
-    // Usage:
-    //     tileset.borrow_mut().some_tileset_method()
-    let tileset = Tileset::from_data(&blockset, &tileset_widget, &tileset_pix);
+    let tileset = Tileset::from_data(tileset_widget, &blockset, &tileset_pix);
     tileset.borrow_mut().select_tile_at(0);
 
-    let maparea = Maparea::new(20, 18, mapset, tileset);
-    maparea::connect_events(maparea, &maparea_widget);
+    let maparea = Maparea::from_data(maparea_widget, 20, 18, mapset, tileset);
 
-    maparea_widget.connect_button_press_event(move |_, ev| {
+    maparea.borrow().widget.connect_button_press_event(move |_, ev| {
         let pos = get_event_pos(ev.get_position());
         lbl_coords.set_label(&format!("{:?}", pos));
 
