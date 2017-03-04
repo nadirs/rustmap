@@ -45,6 +45,10 @@ impl Maparea {
         }
     }
 
+    pub fn on_bytes<T, F: Fn(&[u8]) -> T>(&self, call_on_bytes: F) -> T {
+        call_on_bytes(&self.mapset)
+    }
+
     pub fn from_data(widget: DrawingArea, width: u8, height: u8, mapset: Vec<u8>, tileset: Rc<RefCell<Tileset>>) -> Rc<RefCell<Self>> {
         widget.add_events(drawing_area_mask_bits!());
         widget.set_size_request(width as i32 * BLOCK_SIZE as i32, height as i32 * BLOCK_SIZE as i32);
