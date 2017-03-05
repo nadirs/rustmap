@@ -33,6 +33,7 @@ pub struct Gui {
     config: Config,
     builder: Builder,
     window: Rc<RefCell<Window>>,
+    maparea: Rc<RefCell<Option<Maparea>>>,
 }
 
 impl Gui {
@@ -43,6 +44,7 @@ impl Gui {
             config: config,
             builder: builder,
             window: Rc::new(RefCell::new(window)),
+            maparea: Rc::new(RefCell::new(None)),
         }
     }
 
@@ -58,13 +60,13 @@ impl Gui {
         });
     }
 
-    pub fn run(&self) {
-        let map_path = self.config.recent.map_path.as_ref().expect("No map provided");
-        let tileset_path = self.config.recent.tileset_path.as_ref().expect("No tileset provided");
-        let blockset_path = self.config.recent.blockset_path.as_ref().expect("no blockset provided");
+    pub fn run(&mut self) {
+        let map_path = self.config.recent.map_path.as_ref().expect("No map_path provided");
+        let tileset_path = self.config.recent.tileset_path.as_ref().expect("No tileset_path provided");
+        let blockset_path = self.config.recent.blockset_path.as_ref().expect("No blockset_path provided");
 
         let mut mapset: Vec<u8> = Vec::new();
-        let mut mapset_file = File::open(map_path).unwrap();
+        let mut mapset_file = File::open(map_path).expect(&format!("Invalid map_path {}", map_path));
         if let Err(err) = mapset_file.read_to_end(&mut mapset) {
             println!("{}", err);
             return;
@@ -79,13 +81,15 @@ impl Gui {
         let tileset = Tileset::from_data(tileset_widget, &blockset, &tileset_pix);
         tileset.borrow_mut().select_tile_at(0);
 
-        let maparea = Maparea::from_data(maparea_widget, 20, 18, mapset, tileset);
+        self.maparea = Maparea::from_data(maparea_widget, 20, 18, mapset, tileset);
 
-        maparea.borrow().widget.connect_button_press_event(move |_, ev| {
-            let pos = get_event_pos(ev.get_position());
-            lbl_coords.set_label(&format!("{:?}", pos));
-
-            Inhibit::default()
+        self.maparea.borrow().as_ref().map(|maparea| {
+            let lbl_coords = lbl_coords.clone();
+            maparea.widget.connect_button_press_event(move |_, ev| {
+                let pos = get_event_pos(ev.get_position());
+                lbl_coords.set_label(&format!("{:?}", pos));
+                Inhibit::default()
+            });
         });
 
         // Menu
@@ -94,7 +98,8 @@ impl Gui {
         save_as.add_events(drawing_area_mask_bits!());
 
         let ref window_cell = self.window;
-        save_as.connect_activate(clone!(window_cell => move |_| {
+        let ref maparea_cell = self.maparea;
+        save_as.connect_activate(clone!(window_cell, maparea_cell => move |_| {
             let file_dialog = gtk::FileChooserDialog::new(
                 Some("Save As"), Some(&*window_cell.borrow()), gtk::FileChooserAction::Save);
             file_dialog.add_button("OK", gtk::ResponseType::Ok.into());
@@ -106,9 +111,11 @@ impl Gui {
             if response == gtk::ResponseType::Ok.into() {
                 let filename = filename.expect("filename is missing");
                 /* save file */
-                maparea.borrow().on_bytes(move |bytes| {
-                    let written_bytes = File::create(&filename).and_then(|mut f| f.write(bytes));
-                    println!("{:?}", written_bytes);
+                maparea_cell.borrow().as_ref().map(|maparea| {
+                    maparea.on_bytes(move |bytes| {
+                        let written_bytes = File::create(&filename).and_then(|mut f| f.write(bytes));
+                        println!("{:?}", written_bytes);
+                    });
                 });
             }
         }));

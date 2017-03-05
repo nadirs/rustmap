@@ -11,6 +11,7 @@ use gdk_pixbuf::Pixbuf;
 use cairo::Context;
 
 use std::cmp::{min,max};
+use std::cell::Ref;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -49,29 +50,35 @@ impl Maparea {
         call_on_bytes(&self.mapset)
     }
 
-    pub fn from_data(widget: DrawingArea, width: u8, height: u8, mapset: Vec<u8>, tileset: Rc<RefCell<Tileset>>) -> Rc<RefCell<Self>> {
+    pub fn from_data(widget: DrawingArea, width: u8, height: u8, mapset: Vec<u8>, tileset: Rc<RefCell<Tileset>>) -> Rc<RefCell<Option<Self>>> {
         widget.add_events(drawing_area_mask_bits!());
         widget.set_size_request(width as i32 * BLOCK_SIZE as i32, height as i32 * BLOCK_SIZE as i32);
 
         let maparea = Maparea::new(widget, 20, 18, mapset, tileset);
-        let cell = Rc::new(RefCell::new(maparea));
+        let cell = Rc::new(RefCell::new(Some(maparea)));
 
-        cell.borrow().widget.connect_motion_notify_event(clone!(cell => move |el, ev| {
-            cell.borrow_mut().motion_notify(el, ev);
-            Inhibit::default()
-        }));
-
-        cell.borrow().widget.connect_button_press_event(clone!(cell => move|el, ev| {
-            cell.borrow_mut().button_press(el, ev);
-            Inhibit::default()
-        }));
-
-        cell.borrow().widget.connect_draw(clone!(cell => move |_, context| {
-            cell.borrow_mut().paint(&context);
-            Inhibit::default()
-        }));
-
+        Self::connect_events(&cell);
         cell
+    }
+
+    fn connect_events(cell: &Rc<RefCell<Option<Maparea>>>) {
+        let cell_maparea: Ref<Option<Maparea>> = cell.borrow();
+        let ref widget = cell_maparea.as_ref().unwrap().widget;
+
+        widget.connect_motion_notify_event(clone!(cell => move |el, ev| {
+            cell.borrow_mut().as_mut().unwrap().motion_notify(el, ev);
+            Inhibit::default()
+        }));
+
+        widget.connect_button_press_event(clone!(cell => move|el, ev| {
+            cell.borrow_mut().as_mut().unwrap().button_press(el, ev);
+            Inhibit::default()
+        }));
+
+        widget.connect_draw(clone!(cell => move |_, context| {
+            cell.borrow_mut().as_mut().unwrap().paint(&context);
+            Inhibit::default()
+        }));
     }
 
     fn static_coords(index: usize, width: i32, _: i32) -> (i32, i32) {
