@@ -33,7 +33,8 @@ fn main () {
         return;
     }
 
-    let mut config_file = File::open("rustmap.toml").expect("Invalid toml file: rustmap.toml");
+    let config_filename = "rustmap.toml";
+    let mut config_file = File::open(config_filename).expect(&format!("Invalid toml file: {}", config_filename));
     let mut config_string = String::new();
     if let Err(err) = config_file.read_to_string(&mut config_string) {
         println!("{}", err);

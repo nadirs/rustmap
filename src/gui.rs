@@ -57,17 +57,26 @@ impl Gui {
         });
     }
 
-    pub fn run(&mut self) {
-        let map_path = self.config.recent.map_path.as_ref().expect("No map_path provided");
-        let tileset_path = self.config.recent.tileset_path.as_ref().expect("No tileset_path provided");
-        let blockset_path = self.config.recent.blockset_path.as_ref().expect("No blockset_path provided");
-
+    pub fn load_map(&self, filename: &str) -> Vec<u8> {
         let mut mapset: Vec<u8> = Vec::new();
-        let mut mapset_file = File::open(map_path).expect(&format!("Invalid map_path {}", map_path));
-        if let Err(err) = mapset_file.read_to_end(&mut mapset) {
+        let mut mapset_file = File::open(filename).expect(&format!("Invalid map_path {}", filename));
+        let result = mapset_file.read_to_end(&mut mapset);
+        if let Err(err) = result {
             println!("{}", err);
-            return;
         }
+
+        mapset
+    }
+
+    pub fn run(&mut self) {
+        let mapset: Vec<u8> = self.config.recent.as_ref().and_then({
+            |recent| recent.map_path.as_ref()
+        }).map(|map_path| {
+            self.load_map(&map_path)
+        }).unwrap();
+
+        let tileset_path = self.config.recent.as_ref().unwrap().tileset_path.as_ref().expect("No tileset_path provided");
+        let blockset_path = self.config.recent.as_ref().unwrap().blockset_path.as_ref().expect("No blockset_path provided");
 
         let lbl_coords: Label = self.builder.get_object("lblCoords").expect("No lblCoords found in builder");
         let tileset_widget: DrawingArea = self.builder.get_object("tileset").expect("No tileset found in builder");

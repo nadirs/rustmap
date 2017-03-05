@@ -1,6 +1,14 @@
 #[derive(Debug,Deserialize)]
 pub struct Config {
-    pub recent: RecentSettings
+    pub recent: Option<RecentSettings>
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            recent: None,
+        }
+    }
 }
 
 #[derive(Debug,Deserialize)]
