@@ -44,7 +44,7 @@ impl Gui {
         }
     }
 
-    fn init_ui(&self) {
+    fn init_window(&self) {
         let window = self.window.borrow();
         window.set_gravity(Gravity::Center);
         window.set_title("Rustmap v0.1.0");
@@ -57,49 +57,7 @@ impl Gui {
         });
     }
 
-    pub fn load_map(&self, filename: &str) -> Vec<u8> {
-        let mut mapset: Vec<u8> = Vec::new();
-        let mut mapset_file = File::open(filename).expect(&format!("Invalid map_path {}", filename));
-        let result = mapset_file.read_to_end(&mut mapset);
-        if let Err(err) = result {
-            println!("{}", err);
-        }
-
-        mapset
-    }
-
-    pub fn run(&mut self) {
-        let mapset: Vec<u8> = self.config.recent.as_ref().and_then({
-            |recent| recent.map_path.as_ref()
-        }).map(|map_path| {
-            self.load_map(&map_path)
-        }).unwrap();
-
-        let tileset_path = self.config.recent.as_ref().unwrap().tileset_path.as_ref().expect("No tileset_path provided");
-        let blockset_path = self.config.recent.as_ref().unwrap().blockset_path.as_ref().expect("No blockset_path provided");
-
-        let lbl_coords: Label = self.builder.get_object("lblCoords").expect("No lblCoords found in builder");
-        let tileset_widget: DrawingArea = self.builder.get_object("tileset").expect("No tileset found in builder");
-        let maparea_widget: DrawingArea = self.builder.get_object("maparea").expect("No maparea found in builder");
-
-        let blockset: Vec<u8> = get_bytes_from_filepath(blockset_path).unwrap();
-        let tileset_pix = Pixbuf::new_from_file(tileset_path).unwrap();
-        let tileset = Tileset::from_data(tileset_widget, &blockset, &tileset_pix);
-        tileset.borrow_mut().select_tile_at(0);
-
-        self.maparea = Maparea::from_data(maparea_widget, 20, 18, mapset, tileset);
-
-        self.maparea.borrow().as_ref().map(|maparea| {
-            let lbl_coords = lbl_coords.clone();
-            maparea.widget.connect_motion_notify_event(move |_, ev| {
-                let pos = get_event_pos(ev.get_position());
-                lbl_coords.set_label(&format!("{:?}", pos));
-                Inhibit::default()
-            });
-        });
-
-        // Menu
-        //self.init_menu();
+    fn init_menu(&self) {
         let save_as: MenuItem = self.builder.get_object("menu_save_as").unwrap();
         save_as.add_events(drawing_area_mask_bits!());
 
@@ -125,9 +83,53 @@ impl Gui {
                 });
             }
         }));
+    }
+
+    pub fn load_map(&self, filename: &str) -> Vec<u8> {
+        let mut mapset: Vec<u8> = Vec::new();
+        let mut mapset_file = File::open(filename).expect(&format!("Invalid path: {}", filename));
+        let result = mapset_file.read_to_end(&mut mapset);
+        if let Err(err) = result {
+            println!("{}", err);
+        }
+
+        mapset
+    }
+
+    pub fn run(&mut self) {
+        let mapset = self.config.recent.as_ref().and_then({
+            |recent| recent.map_path.as_ref()
+        }).map(|map_path| {
+            self.load_map(&map_path)
+        }).expect("Error on loading mapset");
+
+        let tileset_path = self.config.recent.as_ref().unwrap().tileset_path.as_ref().expect("No tileset_path provided");
+        let blockset_path = self.config.recent.as_ref().unwrap().blockset_path.as_ref().expect("No blockset_path provided");
+
+        let lbl_coords: Label = self.builder.get_object("lblCoords").expect("No lblCoords found in builder");
+        let tileset_widget: DrawingArea = self.builder.get_object("tileset").expect("No tileset found in builder");
+        let maparea_widget: DrawingArea = self.builder.get_object("maparea").expect("No maparea found in builder");
+
+        let blockset: Vec<u8> = get_bytes_from_filepath(blockset_path).unwrap();
+        let tileset_pix = Pixbuf::new_from_file(tileset_path).unwrap();
+        let tileset = Tileset::from_data(tileset_widget, &blockset, &tileset_pix);
+        tileset.borrow_mut().select_tile_at(0);
+
+        self.maparea = Maparea::from_data(maparea_widget, 20, 18, mapset, tileset);
+        self.maparea.borrow().as_ref().map(|maparea| {
+            let lbl_coords = lbl_coords.clone();
+            maparea.widget.connect_motion_notify_event(move |_, ev| {
+                let pos = get_event_pos(ev.get_position());
+                lbl_coords.set_label(&format!("{:?}", pos));
+                Inhibit::default()
+            });
+        });
+
+        // Menu
+        self.init_menu();
 
         // UI initialization.
-        self.init_ui();
+        self.init_window();
 
         // Run the main loop.
         gtk::main();
