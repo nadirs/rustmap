@@ -72,9 +72,9 @@ impl Gui {
             return;
         }
 
-        let lbl_coords: Label = self.builder.get_object("lblCoords").unwrap();
-        let tileset_widget: DrawingArea = self.builder.get_object("tileset").unwrap();
-        let maparea_widget: DrawingArea = self.builder.get_object("maparea").unwrap();
+        let lbl_coords: Label = self.builder.get_object("lblCoords").expect("No lblCoords found in builder");
+        let tileset_widget: DrawingArea = self.builder.get_object("tileset").expect("No tileset found in builder");
+        let maparea_widget: DrawingArea = self.builder.get_object("maparea").expect("No maparea found in builder");
 
         let blockset: Vec<u8> = get_bytes_from_filepath(blockset_path).unwrap();
         let tileset_pix = Pixbuf::new_from_file(tileset_path).unwrap();
@@ -85,7 +85,7 @@ impl Gui {
 
         self.maparea.borrow().as_ref().map(|maparea| {
             let lbl_coords = lbl_coords.clone();
-            maparea.widget.connect_button_press_event(move |_, ev| {
+            maparea.widget.connect_motion_notify_event(move |_, ev| {
                 let pos = get_event_pos(ev.get_position());
                 lbl_coords.set_label(&format!("{:?}", pos));
                 Inhibit::default()
