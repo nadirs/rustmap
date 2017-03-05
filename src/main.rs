@@ -5,18 +5,19 @@ mod constants;
 mod rustmap;
 mod config;
 mod gui;
-mod position;
 mod maparea;
+mod position;
+mod palette;
 mod tileset;
 
 #[macro_use]
 extern crate serde_derive;
 extern crate toml;
-extern crate gtk;
-extern crate gdk;
-extern crate gdk_sys;
-extern crate gdk_pixbuf;
 extern crate cairo;
+extern crate gdk;
+extern crate gdk_pixbuf;
+extern crate gdk_sys;
+extern crate gtk;
 
 use std::io::prelude::*;
 use std::fs::File;

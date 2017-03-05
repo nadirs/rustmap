@@ -1,13 +1,10 @@
-extern crate gtk;
-extern crate gdk;
-extern crate gdk_sys;
-extern crate gdk_pixbuf;
-extern crate cairo;
-
 use gtk::prelude::*;
 use gdk::prelude::*;
 use gtk::DrawingArea;
+use gdk;
 use gdk_pixbuf::Pixbuf;
+use gdk_sys;
+use cairo;
 use cairo::Context;
 
 use std::cmp::{min,max};
@@ -16,7 +13,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use constants::*;
-use tileset::*;
+use tileset::Tileset;
+use palette::change_palette;
 
 #[derive(Clone, Debug)]
 pub struct Maparea {

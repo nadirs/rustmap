@@ -1,18 +1,14 @@
-extern crate gtk;
-extern crate gdk;
-extern crate gdk_sys;
-extern crate gdk_pixbuf;
-extern crate cairo;
-
 use std::io::prelude::*;
 use std::fs::File;
 use std::rc::Rc;
 use std::cell::RefCell;
 
+use gtk;
 use gtk::prelude::*;
 use gtk::{Builder, DrawingArea, Label, MenuItem, Window};
 use gdk::Gravity;
 use gdk_pixbuf::Pixbuf;
+use gdk_sys;
 
 use config::Config;
 use tileset::Tileset;
@@ -51,6 +47,7 @@ impl Gui {
     fn init_ui(&self) {
         let window = self.window.borrow();
         window.set_gravity(Gravity::Center);
+        window.set_title("Rustmap v0.1.0");
         window.show_all();
 
         // Handle closing of the window.
