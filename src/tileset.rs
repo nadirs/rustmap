@@ -113,6 +113,23 @@ impl Tileset {
     }
 
     pub fn select_tile_at(&mut self, index: u8) {
+        let should_select = self.selected.map_or(true, |old| index != old);
+        if ! should_select {
+            return;
+        }
+
+        let el = &self.widget;
+
+        // clear highlighting from previously selected tile (if any)
+        self.selected.map(|old_selected| {
+            let (x, y) = self.coords(old_selected);
+            el.queue_draw_area(x as i32, y as i32, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
+        });
+
+        // highlight newly selected tile
+        let (x, y) = self.coords(index);
+        el.queue_draw_area(x as i32, y as i32, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
+
         self.selected = Some(index);
     }
 
@@ -198,21 +215,11 @@ impl Tileset {
         }
     }
 
-    pub fn button_press(&mut self, el: &DrawingArea, ev: &gdk::EventButton) {
+    pub fn button_press(&mut self, _: &DrawingArea, ev: &gdk::EventButton) {
         let pos = get_event_pos(ev.get_position());
         let (lx, _) = pos;
 
-        let should_select = self.selected.map_or(true, |old_selected| { lx != old_selected });
-        if should_select {
-            self.selected.map(|old_selected| {
-                let (x, y) = self.coords(old_selected);
-                el.queue_draw_area(x as i32, y as i32, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
-            });
-
-            self.select_tile_at(lx);
-            let (x, y) = self.coords(lx);
-            el.queue_draw_area(x as i32, y as i32, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
-        }
+        self.select_tile_at(lx);
     }
 }
 
