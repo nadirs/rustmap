@@ -33,11 +33,11 @@ pub struct Gui {
 }
 
 impl Gui {
-    pub fn new(config: Config, builder: Builder) -> Self {
+    pub fn new(config: Option<Config>, builder: Builder) -> Self {
         let window: Window = builder.get_object("window").expect("No window found in builder");
 
         Gui {
-            config: config,
+            config: config.unwrap_or_default(),
             builder: builder,
             window: Rc::new(RefCell::new(window)),
             maparea: Rc::new(RefCell::new(None)),

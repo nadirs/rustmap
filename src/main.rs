@@ -36,12 +36,10 @@ fn main () {
     let config_filename = "rustmap.toml";
     let mut config_file = File::open(config_filename).expect(&format!("Invalid toml file: {}", config_filename));
     let mut config_string = String::new();
-    if let Err(err) = config_file.read_to_string(&mut config_string) {
-        println!("{}", err);
-        return;
-    }
-    let config: Config = toml::from_str(&mut config_string).unwrap();
-    let builder = Builder::new_from_file("builder.ui");
+    let config: Option<Config> = config_file.read_to_string(&mut config_string)
+        .ok()
+        .and_then(|_| toml::from_str(&mut config_string).ok());
+    let builder = Builder::new_from_string(include_str!("builder.ui"));
 
     let mut gui = Gui::new(config, builder);
     gui.run();
