@@ -37,8 +37,7 @@ fn main () {
     let mut config_file = File::open(config_filename).expect(&format!("Invalid toml file: {}", config_filename));
     let mut config_string = String::new();
     let config: Option<Config> = config_file.read_to_string(&mut config_string)
-        .ok()
-        .and_then(|_| toml::from_str(&mut config_string).ok());
+        .ok().and_then(|_| toml::from_str(&mut config_string).ok());
     let builder = Builder::new_from_string(include_str!("builder.ui"));
 
     let mut gui = Gui::new(config, builder);

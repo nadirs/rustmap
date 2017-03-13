@@ -55,28 +55,29 @@ impl Maparea {
         let maparea = Maparea::new(widget, 20, 18, mapset, tileset);
         let cell = Rc::new(RefCell::new(Some(maparea)));
 
-        Self::connect_events(&cell);
         cell
     }
 
-    fn connect_events(cell: &Rc<RefCell<Option<Maparea>>>) {
-        let cell_maparea: Ref<Option<Maparea>> = cell.borrow();
-        let ref widget = cell_maparea.as_ref().unwrap().widget;
+    pub fn connect_events(cell: &Rc<RefCell<Option<Self>>>) {
+        let cell_maparea: Ref<Option<Self>> = cell.borrow();
+        cell_maparea.as_ref().map(|maparea|{
+            let ref widget = maparea.widget;
 
-        widget.connect_motion_notify_event(clone!(cell => move |el, ev| {
-            cell.borrow_mut().as_mut().unwrap().motion_notify(el, ev);
-            Inhibit::default()
-        }));
+            widget.connect_motion_notify_event(clone!(cell => move |el, ev| {
+                cell.borrow_mut().as_mut().unwrap().motion_notify(el, ev);
+                Inhibit::default()
+            }));
 
-        widget.connect_button_press_event(clone!(cell => move|el, ev| {
-            cell.borrow_mut().as_mut().unwrap().button_press(el, ev);
-            Inhibit::default()
-        }));
+            widget.connect_button_press_event(clone!(cell => move|el, ev| {
+                cell.borrow_mut().as_mut().unwrap().button_press(el, ev);
+                Inhibit::default()
+            }));
 
-        widget.connect_draw(clone!(cell => move |_, context| {
-            cell.borrow_mut().as_mut().unwrap().paint(&context);
-            Inhibit::default()
-        }));
+            widget.connect_draw(clone!(cell => move |_, context| {
+                cell.borrow_mut().as_mut().unwrap().paint(&context);
+                Inhibit::default()
+            }));
+        });
     }
 
     fn static_coords(index: usize, width: i32, _: i32) -> (i32, i32) {

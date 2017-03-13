@@ -2,6 +2,7 @@ use std::io::prelude::*;
 use std::fs::File;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::path::PathBuf;
 
 use gtk;
 use gtk::prelude::*;
@@ -10,7 +11,7 @@ use gdk::Gravity;
 use gdk_pixbuf::Pixbuf;
 use gdk_sys;
 
-use config::Config;
+use config::{Config,RecentSettings};
 use tileset::Tileset;
 use maparea::Maparea;
 use position::get_event_pos;
@@ -26,7 +27,7 @@ fn get_bytes_from_filepath(path: &str) -> Option<Vec<u8>> {
 
 
 pub struct Gui {
-    config: Config,
+    config: Rc<RefCell<Config>>,
     builder: Builder,
     window: Rc<RefCell<Window>>,
     maparea: Rc<RefCell<Option<Maparea>>>,
@@ -37,7 +38,7 @@ impl Gui {
         let window: Window = builder.get_object("window").expect("No window found in builder");
 
         Gui {
-            config: config.unwrap_or_default(),
+            config: Rc::new(RefCell::new(config.unwrap_or_default())),
             builder: builder,
             window: Rc::new(RefCell::new(window)),
             maparea: Rc::new(RefCell::new(None)),
@@ -63,6 +64,7 @@ impl Gui {
 
         let ref window_cell = self.window;
         let ref maparea_cell = self.maparea;
+        let config_cell = self.config.clone();
         save_as.connect_activate(clone!(window_cell, maparea_cell => move |_| {
             let file_dialog = gtk::FileChooserDialog::new(
                 Some("Save As"), Some(&*window_cell.borrow()), gtk::FileChooserAction::Save);
@@ -74,20 +76,28 @@ impl Gui {
 
             if response == gtk::ResponseType::Ok.into() {
                 let filename = filename.expect("filename is missing");
+
                 /* save file */
                 maparea_cell.borrow().as_ref().map(|maparea| {
-                    maparea.on_bytes(move |bytes| {
+                    maparea.on_bytes(|bytes| {
                         let written_bytes = File::create(&filename).and_then(|mut f| f.write(bytes));
                         println!("{:?}", written_bytes);
                     });
                 });
+
+                /* keep filename for future use */
+                let mut config = config_cell.borrow_mut();
+                if let None = config.recent {
+                    config.recent = Some(RecentSettings::default());
+                }
+                config.recent.as_mut().map(|mut recent| recent.map_path = Some(filename));
             }
         }));
     }
 
-    pub fn load_map(&self, filename: &str) -> Vec<u8> {
+    pub fn load_map(&self, filename: &PathBuf) -> Vec<u8> {
         let mut mapset: Vec<u8> = Vec::new();
-        let mut mapset_file = File::open(filename).expect(&format!("Invalid path: {}", filename));
+        let mut mapset_file = File::open(filename).expect(&format!("Invalid path: {:?}", filename));
         let result = mapset_file.read_to_end(&mut mapset);
         if let Err(err) = result {
             println!("{}", err);
@@ -97,33 +107,37 @@ impl Gui {
     }
 
     pub fn run(&mut self) {
-        let mapset = self.config.recent.as_ref().and_then({
-            |recent| recent.map_path.as_ref()
-        }).map(|map_path| {
-            self.load_map(&map_path)
-        }).expect("Error on loading mapset");
+        {
+            let config = self.config.borrow();
+            let mapset = config.recent.as_ref().and_then({
+                |recent| recent.map_path.as_ref()
+            }).map(|map_path| {
+                self.load_map(map_path)
+            }).expect("Error on loading mapset");
 
-        let tileset_path = self.config.recent.as_ref().unwrap().tileset_path.as_ref().expect("No tileset_path provided");
-        let blockset_path = self.config.recent.as_ref().unwrap().blockset_path.as_ref().expect("No blockset_path provided");
+            let tileset_path = config.recent.as_ref().unwrap().tileset_path.as_ref().expect("No tileset_path provided");
+            let blockset_path = config.recent.as_ref().unwrap().blockset_path.as_ref().expect("No blockset_path provided");
 
-        let lbl_coords: Label = self.builder.get_object("lblCoords").expect("No lblCoords found in builder");
-        let tileset_widget: DrawingArea = self.builder.get_object("tileset").expect("No tileset found in builder");
-        let maparea_widget: DrawingArea = self.builder.get_object("maparea").expect("No maparea found in builder");
+            let lbl_coords: Label = self.builder.get_object("lblCoords").expect("No lblCoords found in builder");
+            let tileset_widget: DrawingArea = self.builder.get_object("tileset").expect("No tileset found in builder");
+            let maparea_widget: DrawingArea = self.builder.get_object("maparea").expect("No maparea found in builder");
 
-        let blockset: Vec<u8> = get_bytes_from_filepath(blockset_path).unwrap();
-        let tileset_pix = Pixbuf::new_from_file(tileset_path).unwrap();
-        let tileset = Tileset::from_data(tileset_widget, &blockset, &tileset_pix);
-        tileset.borrow_mut().select_tile_at(0);
+            let blockset: Vec<u8> = get_bytes_from_filepath(blockset_path).unwrap();
+            let tileset_pix = Pixbuf::new_from_file(tileset_path).unwrap();
+            let tileset = Tileset::from_data(tileset_widget, &blockset, &tileset_pix);
+            tileset.borrow_mut().select_tile_at(0);
 
-        self.maparea = Maparea::from_data(maparea_widget, 20, 18, mapset, tileset);
-        self.maparea.borrow().as_ref().map(|maparea| {
-            let lbl_coords = lbl_coords.clone();
-            maparea.widget.connect_motion_notify_event(move |_, ev| {
-                let pos = get_event_pos(ev.get_position());
-                lbl_coords.set_label(&format!("{:?}", pos));
-                Inhibit::default()
+            self.maparea = Maparea::from_data(maparea_widget, 20, 18, mapset, tileset);
+            self.maparea.borrow().as_ref().map(|maparea| {
+                let lbl_coords = lbl_coords.clone();
+                maparea.widget.connect_motion_notify_event(move |_, ev| {
+                    let pos = get_event_pos(ev.get_position());
+                    lbl_coords.set_label(&format!("{:?}", pos));
+                    Inhibit::default()
+                });
             });
-        });
+            Maparea::connect_events(&self.maparea);
+        }
 
         // Menu
         self.init_menu();

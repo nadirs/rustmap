@@ -1,19 +1,13 @@
-#[derive(Debug,Deserialize)]
+use std::path::PathBuf;
+
+#[derive(Debug,Default,Deserialize)]
 pub struct Config {
     pub recent: Option<RecentSettings>
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            recent: None,
-        }
-    }
-}
-
-#[derive(Debug,Deserialize)]
+#[derive(Default,Debug,Deserialize)]
 pub struct RecentSettings {
-    pub map_path: Option<String>,
+    pub map_path: Option<PathBuf>,
     pub tileset_path: Option<String>,
     pub blockset_path: Option<String>,
 }
