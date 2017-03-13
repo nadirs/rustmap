@@ -11,7 +11,7 @@ use gdk::Gravity;
 use gdk_pixbuf::Pixbuf;
 use gdk_sys;
 
-use config::{Config,RecentSettings};
+use config::Config;
 use tileset::Tileset;
 use maparea::Maparea;
 use position::get_event_pos;
@@ -65,34 +65,60 @@ impl Gui {
         let ref window_cell = self.window;
         let ref maparea_cell = self.maparea;
         let config_cell = self.config.clone();
+
         save_as.connect_activate(clone!(window_cell, maparea_cell => move |_| {
-            let file_dialog = gtk::FileChooserDialog::new(
-                Some("Save As"), Some(&*window_cell.borrow()), gtk::FileChooserAction::Save);
-            file_dialog.add_button("OK", gtk::ResponseType::Ok.into());
-            file_dialog.add_button("Cancel", gtk::ResponseType::Cancel.into());
-            let response = file_dialog.run();
-            let filename = file_dialog.get_filename();
-            file_dialog.destroy();
-
-            if response == gtk::ResponseType::Ok.into() {
-                let filename = filename.expect("filename is missing");
-
-                /* save file */
-                maparea_cell.borrow().as_ref().map(|maparea| {
-                    maparea.on_bytes(|bytes| {
-                        let written_bytes = File::create(&filename).and_then(|mut f| f.write(bytes));
-                        println!("{:?}", written_bytes);
-                    });
-                });
-
-                /* keep filename for future use */
-                let mut config = config_cell.borrow_mut();
-                if let None = config.recent {
-                    config.recent = Some(RecentSettings::default());
-                }
-                config.recent.as_mut().map(|mut recent| recent.map_path = Some(filename));
-            }
+            Gui::save_map_as(&maparea_cell.borrow(), &mut config_cell.borrow_mut(), &window_cell.borrow());
         }));
+
+        let save: MenuItem = self.builder.get_object("menu_save").unwrap();
+        save.add_events(drawing_area_mask_bits!());
+
+        let ref window_cell = self.window;
+        let ref maparea_cell = self.maparea;
+        let config_cell = self.config.clone();
+
+        save.connect_activate(clone!(window_cell, maparea_cell => move |_| {
+            /* keep filename for future use */
+            let mut config = config_cell.borrow_mut();
+            let _ = config.recent.as_ref()
+                .and_then(|recent| recent.map_path.clone())
+                .map(|map_path| {
+                    Gui::save_map(&maparea_cell.borrow(), map_path)
+                })
+                .ok_or_else(|| {
+                    Gui::save_map_as(&maparea_cell.borrow(), &mut config, &window_cell.borrow());
+                    //config_cell.borrow_mut().recent.as_mut().map(|mut recent| recent.map_path = Some(filename));
+                });
+        }));
+
+    }
+
+    fn save_map_as(maparea: &Option<Maparea>, config: &mut Config, window: &Window) {
+        let file_dialog = gtk::FileChooserDialog::new(
+            Some("Save As"), Some(window), gtk::FileChooserAction::Save);
+        file_dialog.add_button("OK", gtk::ResponseType::Ok.into());
+        file_dialog.add_button("Cancel", gtk::ResponseType::Cancel.into());
+        let response = file_dialog.run();
+        let filename = file_dialog.get_filename();
+        file_dialog.destroy();
+
+        if response == gtk::ResponseType::Ok.into() {
+            let filename = filename.expect("filename is missing");
+
+            /* keep filename for future use */
+            Gui::save_map(maparea, filename.clone());
+
+            config.recent.as_mut().map(|mut recent| recent.map_path = Some(filename));
+        }
+    }
+
+    fn save_map(maparea: &Option<Maparea>, filename: PathBuf) {
+        maparea.as_ref().map(|maparea| {
+            maparea.on_bytes(|bytes| {
+                let written_bytes = File::create(&filename).and_then(|mut f| f.write(bytes));
+                println!("{:?}", written_bytes);
+            });
+        });
     }
 
     pub fn load_map(&self, filename: &PathBuf) -> Vec<u8> {
