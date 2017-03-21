@@ -5,6 +5,7 @@ mod constants;
 mod rustmap;
 mod config;
 mod gui;
+mod history;
 mod maparea;
 mod position;
 mod palette;
@@ -42,5 +43,4 @@ fn main () {
 
     let mut gui = Gui::new(config, builder);
     gui.run();
-
 }

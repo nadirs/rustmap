@@ -66,6 +66,9 @@ impl Gui {
         let ref maparea_cell = self.maparea;
         let config_cell = self.config.clone();
 
+        //
+        // SAVE
+        //
         save_as.connect_activate(clone!(window_cell, maparea_cell => move |_| {
             Gui::save_map_as(&maparea_cell.borrow(), &mut config_cell.borrow_mut(), &window_cell.borrow());
         }));
@@ -73,11 +76,9 @@ impl Gui {
         let save: MenuItem = self.builder.get_object("menu_save").unwrap();
         save.add_events(drawing_area_mask_bits!());
 
-        let ref window_cell = self.window;
-        let ref maparea_cell = self.maparea;
         let config_cell = self.config.clone();
 
-        save.connect_activate(clone!(window_cell, maparea_cell => move |_| {
+        save.connect_activate(clone!(window_cell, maparea_cell, config_cell => move |_| {
             /* keep filename for future use */
             let mut config = config_cell.borrow_mut();
             let _ = config.recent.as_ref()
@@ -89,6 +90,17 @@ impl Gui {
                     Gui::save_map_as(&maparea_cell.borrow(), &mut config, &window_cell.borrow());
                     //config_cell.borrow_mut().recent.as_mut().map(|mut recent| recent.map_path = Some(filename));
                 });
+        }));
+
+        //
+        // UNDO & REDO
+        //
+        let undo: MenuItem = self.builder.get_object("menu_undo").unwrap();
+        undo.add_events(drawing_area_mask_bits!());
+
+        undo.connect_activate(clone!(maparea_cell => move |_| {
+            /* TODO pop last action from history */
+            maparea_cell.borrow_mut().as_mut().map(|maparea| maparea.undo());
         }));
 
     }

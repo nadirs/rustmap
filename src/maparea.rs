@@ -11,10 +11,12 @@ use std::cmp::{min,max};
 use std::cell::Ref;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::mem;
 
 use constants::*;
 use tileset::Tileset;
 use palette::change_palette;
+use history::History;
 
 #[derive(Clone, Debug)]
 pub struct Maparea {
@@ -26,6 +28,7 @@ pub struct Maparea {
     pix_cache: Pixbuf,
     palette: RgbPalette,
     pub widget: DrawingArea,
+    history: History,
 }
 
 impl Maparea {
@@ -41,6 +44,7 @@ impl Maparea {
             pix_cache: pix_cache,
             palette: BASE_PALETTE,
             widget: widget,
+            history: History::default(),
         }
     }
 
@@ -78,6 +82,45 @@ impl Maparea {
                 Inhibit::default()
             }));
         });
+    }
+
+    pub fn set_mapset(&mut self, mapset: Vec<u8>) -> Vec<u8> {
+        let old_mapset = mem::replace(&mut self.mapset, mapset);
+        self.widget.queue_draw_area(0, 0, self.width as i32 * BLOCK_SIZE as i32, self.height as i32 * BLOCK_SIZE as i32);
+        old_mapset
+    }
+
+    pub fn undo(&mut self) {
+        let state = {
+            self.history.undo()
+        };
+        state.map(|state| {
+            // TODO: diff old and new mapset. Then, for each different block, call
+            for (index, block) in Maparea::diff(&self.mapset, &state) {
+                self.update_map_block(index, block);
+            }
+            self.set_mapset(state);
+        });
+    }
+
+    /// Find which bytes changed
+    /// # Example:
+    ///
+    /// ```
+    /// let old = vec![0, 1, 2];
+    /// let new = vec![0, 2, 2];
+    /// diff(old, new);
+    /// ```
+    fn diff(old: &[u8], new: &[u8]) -> Vec<(usize, u8)> {
+        let mut result = Vec::new();
+
+        for (i, (o, n)) in old.iter().zip(new).enumerate() {
+            if o != n {
+                result.push((i, *n));
+            }
+        }
+
+        result
     }
 
     fn static_coords(index: usize, width: i32, _: i32) -> (i32, i32) {
@@ -236,6 +279,7 @@ impl Maparea {
     pub fn button_press_left(&mut self, el: &DrawingArea, block_index: usize) {
         let selected_block = self.tileset.borrow().selected;
         if let Some(selected_block_index) = selected_block {
+            self.history.update(self.mapset.clone());
             self.update_map_block(block_index, selected_block_index);
             let (x, y) = self.coords(block_index);
             el.queue_draw_area(x as i32, y as i32, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
