@@ -84,34 +84,25 @@ impl Maparea {
         });
     }
 
-    pub fn set_mapset(&mut self, mapset: Vec<u8>) -> Vec<u8> {
+    fn set_mapset(&mut self, mapset: Vec<u8>) -> Vec<u8> {
         let old_mapset = mem::replace(&mut self.mapset, mapset);
         self.widget.queue_draw_area(0, 0, self.width as i32 * BLOCK_SIZE as i32, self.height as i32 * BLOCK_SIZE as i32);
         old_mapset
     }
 
+    fn replace_mapset(&mut self, state: Vec<u8>) {
+        for (index, block) in Maparea::diff(&self.mapset, &state) {
+            self.update_map_block(index, block);
+        }
+        self.set_mapset(state);
+    }
+
     pub fn redo(&mut self) {
-        let state = {
-            self.history.redo()
-        };
-        state.map(|state| {
-            for (index, block) in Maparea::diff(&self.mapset, &state) {
-                self.update_map_block(index, block);
-            }
-            self.set_mapset(state);
-        });
+        self.history.redo().map(|state| self.replace_mapset(state));
     }
 
     pub fn undo(&mut self) {
-        let state = {
-            self.history.undo()
-        };
-        state.map(|state| {
-            for (index, block) in Maparea::diff(&self.mapset, &state) {
-                self.update_map_block(index, block);
-            }
-            self.set_mapset(state);
-        });
+        self.history.undo().map(|state| self.replace_mapset(state));
     }
 
     /// Find which bytes changed
