@@ -14,6 +14,13 @@ impl Default for History {
 }
 
 impl History {
+    pub fn redo(&mut self) -> Option<Vec<u8>> {
+        self.next.pop().map(move |elem| {
+            self.prev.push(elem.clone());
+            elem
+        })
+    }
+
     pub fn undo(&mut self) -> Option<Vec<u8>> {
         self.prev.pop().map(move |elem| {
             self.next.push(elem.clone());

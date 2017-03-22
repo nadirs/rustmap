@@ -90,12 +90,23 @@ impl Maparea {
         old_mapset
     }
 
+    pub fn redo(&mut self) {
+        let state = {
+            self.history.redo()
+        };
+        state.map(|state| {
+            for (index, block) in Maparea::diff(&self.mapset, &state) {
+                self.update_map_block(index, block);
+            }
+            self.set_mapset(state);
+        });
+    }
+
     pub fn undo(&mut self) {
         let state = {
             self.history.undo()
         };
         state.map(|state| {
-            // TODO: diff old and new mapset. Then, for each different block, call
             for (index, block) in Maparea::diff(&self.mapset, &state) {
                 self.update_map_block(index, block);
             }

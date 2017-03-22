@@ -103,6 +103,14 @@ impl Gui {
             maparea_cell.borrow_mut().as_mut().map(|maparea| maparea.undo());
         }));
 
+        let redo: MenuItem = self.builder.get_object("menu_redo").unwrap();
+        redo.add_events(drawing_area_mask_bits!());
+
+        redo.connect_activate(clone!(maparea_cell => move |_| {
+            /* TODO push next action from history */
+            maparea_cell.borrow_mut().as_mut().map(|maparea| maparea.redo());
+        }));
+
     }
 
     fn save_map_as(maparea: &Option<Maparea>, config: &mut Config, window: &Window) {
