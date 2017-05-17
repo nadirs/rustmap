@@ -35,6 +35,8 @@ impl Maparea {
     pub fn new(widget: DrawingArea, width: u8, height: u8, mapset: Vec<u8>, tileset: Rc<RefCell<Tileset>>) -> Self {
         let pix_cache = Self::static_build_pix(width as i32 * BLOCK_SIZE as i32, height as i32 * BLOCK_SIZE as i32, &mapset, &*tileset.borrow());
 
+        let history = History::new(mapset.clone());
+
         Maparea {
             mapset: mapset,
             tileset: tileset,
@@ -44,7 +46,7 @@ impl Maparea {
             pix_cache: pix_cache,
             palette: BASE_PALETTE,
             widget: widget,
-            history: History::default(),
+            history: history,
         }
     }
 
@@ -281,8 +283,8 @@ impl Maparea {
     pub fn button_press_left(&mut self, el: &DrawingArea, block_index: usize) {
         let selected_block = self.tileset.borrow().selected;
         if let Some(selected_block_index) = selected_block {
-            self.history.update(self.mapset.clone());
             self.update_map_block(block_index, selected_block_index);
+            self.history.update(self.mapset.clone());
             let (x, y) = self.coords(block_index);
             el.queue_draw_area(x as i32, y as i32, BLOCK_SIZE as i32, BLOCK_SIZE as i32);
         }

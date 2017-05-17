@@ -1,12 +1,14 @@
 #[derive(Clone, Debug)]
 pub struct History {
+    init: Vec<u8>,
     prev: Vec<Vec<u8>>,
     next: Vec<Vec<u8>>,
 }
 
-impl Default for History {
-    fn default() -> Self {
+impl History {
+    pub fn new(init: Vec<u8>) -> Self {
         History {
+            init: init,
             prev: Vec::new(),
             next: Vec::new(),
         }
@@ -15,15 +17,23 @@ impl Default for History {
 
 impl History {
     pub fn redo(&mut self) -> Option<Vec<u8>> {
-        self.next.pop().map(move |elem| {
-            self.prev.push(elem.clone());
+        self.next.pop().map(|elem| {
+            self.prev.push(elem);
+        });
+        self.next.pop().map(|elem| {
+            self.next.push(elem.clone());
             elem
         })
     }
 
     pub fn undo(&mut self) -> Option<Vec<u8>> {
-        self.prev.pop().map(move |elem| {
-            self.next.push(elem.clone());
+        self.prev.pop().map(|elem| {
+            self.next.push(elem);
+        });
+        self.prev.pop()
+            .or(Some(self.init.clone()))
+            .map(|elem| {
+            self.prev.push(elem.clone());
             elem
         })
     }
