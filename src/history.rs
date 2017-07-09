@@ -18,10 +18,7 @@ impl History {
 impl History {
     pub fn redo(&mut self) -> Option<Vec<u8>> {
         self.next.pop().map(|elem| {
-            self.prev.push(elem);
-        });
-        self.next.pop().map(|elem| {
-            self.next.push(elem.clone());
+            self.prev.push(elem.clone());
             elem
         })
     }
@@ -31,11 +28,10 @@ impl History {
             self.next.push(elem);
         });
         self.prev.pop()
-            .or(Some(self.init.clone()))
-            .map(|elem| {
-            self.prev.push(elem.clone());
-            elem
-        })
+            .map_or(Some(self.init.clone()), |elem| {
+                self.prev.push(elem.clone());
+                Some(elem)
+            })
     }
 
     pub fn update(&mut self, state: Vec<u8>) {
