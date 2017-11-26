@@ -90,14 +90,15 @@ impl Tileset {
     }
 
     fn new_pixbuf_static<F: FnOnce(&cairo::Context)>(width: i32, height: i32, call_on_context: F) -> Pixbuf {
-        let mut surface = cairo::ImageSurface::create(cairo::Format::Rgb24, width, height);
+        let mut surface = cairo::ImageSurface::create(cairo::Format::Rgb24, width, height).expect("Error in Tileset::new_pixbuf_static");
         {
             let context = cairo::Context::new(&surface);
             call_on_context(&context);
         }
 
         let mut data = Vec::with_capacity((width * height * 3) as usize);
-        for b in surface.get_data().unwrap().iter().as_slice().chunks(4) {
+        let surface_data = surface.get_data().expect("Error in Tileset::new_pixbuf_static");
+        for b in surface_data.iter().as_slice().chunks(4) {
             data.push(*b.get(2).unwrap());
             data.push(*b.get(1).unwrap());
             data.push(*b.get(0).unwrap());

@@ -155,7 +155,7 @@ impl Maparea {
     }
 
     fn new_pixbuf_static<F: FnOnce(&cairo::Context)>(width: i32, height: i32, call_on_context: F) -> Pixbuf {
-        let mut surface = cairo::ImageSurface::create(cairo::Format::Rgb24, width, height);
+        let mut surface = cairo::ImageSurface::create(cairo::Format::Rgb24, width, height).expect("Error in new_pixbuf_static: cannot create ImageSurface");
         {
             let context = cairo::Context::new(&surface);
             call_on_context(&context);

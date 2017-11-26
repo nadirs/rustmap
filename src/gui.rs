@@ -128,7 +128,7 @@ impl Gui {
             /* keep filename for future use */
             Gui::save_map(maparea, filename.clone());
 
-            config.recent.as_mut().map(|mut recent| recent.map_path = Some(filename));
+            config.recent.as_mut().map(|recent| recent.map_path = Some(filename));
         }
     }
 
