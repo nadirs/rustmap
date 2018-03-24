@@ -17,7 +17,6 @@ extern crate toml;
 extern crate cairo;
 extern crate gdk;
 extern crate gdk_pixbuf;
-extern crate gdk_sys;
 extern crate gtk;
 
 use std::io::prelude::*;

@@ -7,8 +7,7 @@ authors = ["Nadir Sampaoli <nadirsampaoli@gmail.com>"]
 toml = "*"
 serde = "^1"
 serde_derive = "^1"
-gtk = { version = "^0", features = ["v3_22"] }
-gdk = "^0"
-gdk-sys = "^0"
-gdk-pixbuf = "^0"
-cairo-rs = "^0"
+gtk = { version = "^0.3", features = ["v3_22"] }
+gdk = "^0.7"
+gdk-pixbuf = "^0.3"
+cairo-rs = "^0.3"

@@ -5,11 +5,11 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 
 use gtk;
+use gdk;
 use gtk::prelude::*;
 use gtk::{Builder, DrawingArea, Label, MenuItem, Window};
 use gdk::Gravity;
 use gdk_pixbuf::Pixbuf;
-use gdk_sys;
 
 use config::Config;
 use tileset::Tileset;
@@ -155,6 +155,8 @@ impl Gui {
     pub fn run(&mut self) {
         {
             let config = self.config.borrow();
+            let map_height = config.recent.as_ref().unwrap().map_height.unwrap();
+            let map_width = config.recent.as_ref().unwrap().map_width.unwrap();
             let mapset = config.recent.as_ref().and_then({
                 |recent| recent.map_path.as_ref()
             }).map(|map_path| {
@@ -168,12 +170,14 @@ impl Gui {
             let tileset_widget: DrawingArea = self.builder.get_object("tileset").expect("No tileset found in builder");
             let maparea_widget: DrawingArea = self.builder.get_object("maparea").expect("No maparea found in builder");
 
+            // TODO need better error handling
             let blockset: Vec<u8> = get_bytes_from_filepath(blockset_path).unwrap();
+            // TODO need better error handling
             let tileset_pix = Pixbuf::new_from_file(tileset_path).unwrap();
             let tileset = Tileset::from_data(tileset_widget, &blockset, &tileset_pix);
             tileset.borrow_mut().select_tile_at(0);
 
-            self.maparea = Maparea::from_data(maparea_widget, 20, 18, mapset, tileset);
+            self.maparea = Maparea::from_data(maparea_widget, map_width, map_height, mapset, tileset);
             self.maparea.borrow().as_ref().map(|maparea| {
                 let lbl_coords = lbl_coords.clone();
                 maparea.widget.connect_motion_notify_event(move |_, ev| {

@@ -1,5 +1,3 @@
-extern crate gdk_sys;
-
 // make moving clones into closures more convenient
 macro_rules! clone {
     (@param _) => ( _ );
@@ -20,10 +18,10 @@ macro_rules! clone {
 
 macro_rules! drawing_area_mask_bits {
     () => (
-        (gdk_sys::GDK_POINTER_MOTION_MASK
-         | gdk_sys::GDK_BUTTON_PRESS_MASK
-         | gdk_sys::GDK_BUTTON1_MOTION_MASK
-         | gdk_sys::GDK_ENTER_NOTIFY_MASK
-         | gdk_sys::GDK_LEAVE_NOTIFY_MASK).bits() as i32
+        (gdk::EventMask::POINTER_MOTION_MASK
+         | gdk::EventMask::BUTTON_PRESS_MASK
+         | gdk::EventMask::BUTTON1_MOTION_MASK
+         | gdk::EventMask::ENTER_NOTIFY_MASK
+         | gdk::EventMask::LEAVE_NOTIFY_MASK).bits() as i32
     )
 }

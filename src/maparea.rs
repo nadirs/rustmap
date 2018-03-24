@@ -3,7 +3,6 @@ use gdk::prelude::*;
 use gtk::DrawingArea;
 use gdk;
 use gdk_pixbuf::Pixbuf;
-use gdk_sys;
 use cairo;
 use cairo::Context;
 
@@ -58,7 +57,7 @@ impl Maparea {
         widget.add_events(drawing_area_mask_bits!());
         widget.set_size_request(width as i32 * BLOCK_SIZE as i32, height as i32 * BLOCK_SIZE as i32);
 
-        let maparea = Maparea::new(widget, 20, 18, mapset, tileset);
+        let maparea = Maparea::new(widget, width, height, mapset, tileset);
         let cell = Rc::new(RefCell::new(Some(maparea)));
 
         cell

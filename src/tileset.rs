@@ -4,7 +4,6 @@ use cairo;
 use gdk;
 use gdk::prelude::*;
 use gdk_pixbuf::Pixbuf;
-use gdk_sys;
 
 use std::cmp::{min,max};
 use std::cell::RefCell;
@@ -24,6 +23,7 @@ pub struct Tileset {
     pix_cache: Pixbuf,
     palette: RgbPalette,
     widget: DrawingArea,
+    _max_block_id: u8,
 }
 
 impl Tileset {
@@ -37,7 +37,12 @@ impl Tileset {
             pix_cache: tileset_pix_cache,
             palette: BASE_PALETTE,
             widget: widget,
+            _max_block_id: (pix.get_width() / TILE_SIZE as i32) as u8 * (pix.get_height() / TILE_SIZE as i32) as u8,
         }
+    }
+
+    pub fn get_max_block_id(&self) -> u8 {
+        self._max_block_id
     }
 
     pub fn from_data(widget: DrawingArea, blockset: &Vec<u8>, pix: &Pixbuf) -> Rc<RefCell<Self>> {
@@ -79,8 +84,13 @@ impl Tileset {
     fn build_tileset_pix(width: i32, height: i32, pix: &Pixbuf, blockset: &[u8]) -> Pixbuf {
         Self::new_pixbuf_static(width, height, |context| {
             let tileset_width = pix.get_width() / TILE_SIZE as i32;
+            let tileset_height = pix.get_height() / TILE_SIZE as i32;
+            let max_block_id = tileset_width * tileset_height;
             for (i, b_) in blockset.iter().enumerate() {
-                let b = *b_ as i32;
+                let mut b = *b_ as i32;
+                if b > max_block_id {
+                    continue;
+                }
                 let tile = pix.new_subpixbuf(TILE_SIZE as i32 * (b % tileset_width), TILE_SIZE as i32 * ((b / tileset_width) as i32), TILE_SIZE as i32, TILE_SIZE as i32);
 
                 context.set_source_pixbuf(&tile, (((i % 4) * TILE_SIZE) + (i / 16) * BLOCK_SIZE) as f64, ((((i / 4) % 4) as i32) * TILE_SIZE as i32) as f64);
