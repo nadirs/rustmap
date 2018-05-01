@@ -6,7 +6,7 @@ use gdk_pixbuf::Pixbuf;
 use cairo;
 use cairo::Context;
 
-use std::cmp::{min,max};
+use std::cmp::{min, max};
 use std::cell::Ref;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -31,8 +31,19 @@ pub struct Maparea {
 }
 
 impl Maparea {
-    pub fn new(widget: DrawingArea, width: u8, height: u8, mapset: Vec<u8>, tileset: Rc<RefCell<Tileset>>) -> Self {
-        let pix_cache = Self::static_build_pix(width as i32 * BLOCK_SIZE as i32, height as i32 * BLOCK_SIZE as i32, &mapset, &*tileset.borrow());
+    pub fn new(
+        widget: DrawingArea,
+        width: u8,
+        height: u8,
+        mapset: Vec<u8>,
+        tileset: Rc<RefCell<Tileset>>,
+    ) -> Self {
+        let pix_cache = Self::static_build_pix(
+            width as i32 * BLOCK_SIZE as i32,
+            height as i32 * BLOCK_SIZE as i32,
+            &mapset,
+            &*tileset.borrow(),
+        );
 
         let history = History::new(mapset.clone());
 
@@ -53,9 +64,18 @@ impl Maparea {
         call_on_bytes(&self.mapset)
     }
 
-    pub fn from_data(widget: DrawingArea, width: u8, height: u8, mapset: Vec<u8>, tileset: Rc<RefCell<Tileset>>) -> Rc<RefCell<Option<Self>>> {
+    pub fn from_data(
+        widget: DrawingArea,
+        width: u8,
+        height: u8,
+        mapset: Vec<u8>,
+        tileset: Rc<RefCell<Tileset>>,
+    ) -> Rc<RefCell<Option<Self>>> {
         widget.add_events(drawing_area_mask_bits!());
-        widget.set_size_request(width as i32 * BLOCK_SIZE as i32, height as i32 * BLOCK_SIZE as i32);
+        widget.set_size_request(
+            width as i32 * BLOCK_SIZE as i32,
+            height as i32 * BLOCK_SIZE as i32,
+        );
 
         let maparea = Maparea::new(widget, width, height, mapset, tileset);
         let cell = Rc::new(RefCell::new(Some(maparea)));
@@ -65,7 +85,7 @@ impl Maparea {
 
     pub fn connect_events(cell: &Rc<RefCell<Option<Self>>>) {
         let cell_maparea: Ref<Option<Self>> = cell.borrow();
-        cell_maparea.as_ref().map(|maparea|{
+        cell_maparea.as_ref().map(|maparea| {
             let ref widget = maparea.widget;
 
             widget.connect_motion_notify_event(clone!(cell => move |el, ev| {
@@ -87,7 +107,12 @@ impl Maparea {
 
     fn set_mapset(&mut self, mapset: Vec<u8>) -> Vec<u8> {
         let old_mapset = mem::replace(&mut self.mapset, mapset);
-        self.widget.queue_draw_area(0, 0, self.width as i32 * BLOCK_SIZE as i32, self.height as i32 * BLOCK_SIZE as i32);
+        self.widget.queue_draw_area(
+            0,
+            0,
+            self.width as i32 * BLOCK_SIZE as i32,
+            self.height as i32 * BLOCK_SIZE as i32,
+        );
         old_mapset
     }
 
@@ -127,7 +152,10 @@ impl Maparea {
     }
 
     fn static_coords(index: usize, width: i32, _: i32) -> (i32, i32) {
-        ((index as i32 * BLOCK_SIZE as i32) % width, (index as i32 * BLOCK_SIZE as i32 / width) * BLOCK_SIZE as i32)
+        (
+            (index as i32 * BLOCK_SIZE as i32) % width,
+            (index as i32 * BLOCK_SIZE as i32 / width) * BLOCK_SIZE as i32,
+        )
     }
 
     pub fn coords(&self, index: usize) -> (i32, i32) {
@@ -141,20 +169,26 @@ impl Maparea {
     }
 
     fn static_build_pix(width: i32, height: i32, mapset: &[u8], tileset: &Tileset) -> Pixbuf {
-        Self::new_pixbuf_static(width, height, |context| {
-            for (i, b_) in mapset.iter().enumerate() {
-                let b = *b_;
-                let (x, y) = Self::static_coords(i, width, height);
-                let tile = tileset.get_tile_pix(b);
+        Self::new_pixbuf_static(width, height, |context| for (i, b_) in mapset
+            .iter()
+            .enumerate()
+        {
+            let b = *b_;
+            let (x, y) = Self::static_coords(i, width, height);
+            let tile = tileset.get_tile_pix(b);
 
-                context.set_source_pixbuf(&tile, x as f64, y as f64);
-                context.paint();
-            }
+            context.set_source_pixbuf(&tile, x as f64, y as f64);
+            context.paint();
         })
     }
 
-    fn new_pixbuf_static<F: FnOnce(&cairo::Context)>(width: i32, height: i32, call_on_context: F) -> Pixbuf {
-        let mut surface = cairo::ImageSurface::create(cairo::Format::Rgb24, width, height).expect("Error in new_pixbuf_static: cannot create ImageSurface");
+    fn new_pixbuf_static<F: FnOnce(&cairo::Context)>(
+        width: i32,
+        height: i32,
+        call_on_context: F,
+    ) -> Pixbuf {
+        let mut surface = cairo::ImageSurface::create(cairo::Format::Rgb24, width, height)
+            .expect("Error in new_pixbuf_static: cannot create ImageSurface");
         {
             let context = cairo::Context::new(&surface);
             call_on_context(&context);
@@ -180,7 +214,11 @@ impl Maparea {
             context.paint();
 
             let (x, y) = self.coords(map_index);
-            context.set_source_pixbuf(&self.tileset.borrow().get_tile_pix(block_index), x as f64, y as f64);
+            context.set_source_pixbuf(
+                &self.tileset.borrow().get_tile_pix(block_index),
+                x as f64,
+                y as f64,
+            );
             context.paint();
         });
 
@@ -192,7 +230,12 @@ impl Maparea {
         let width = max(0, min(self.pix_cache.get_width(), x1 as i32) - x0 as i32);
         let height = max(0, min(self.pix_cache.get_height(), y1 as i32) - y0 as i32);
 
-        let subpix = &self.pix_cache.new_subpixbuf(x0 as i32, y0 as i32, width, height);
+        let subpix = &self.pix_cache.new_subpixbuf(
+            x0 as i32,
+            y0 as i32,
+            width,
+            height,
+        );
         context.set_source_pixbuf(subpix, x0 as f64, y0 as f64);
         context.paint();
 
@@ -208,10 +251,10 @@ impl Maparea {
         let sel_x1 = sel_x + BLOCK_SIZE as i32;
         let sel_y1 = sel_y + BLOCK_SIZE as i32;
 
-        let within_left   = sel_x  >= x0 as i32 && sel_x  <= x1 as i32;
-        let within_right  = sel_x1 >= x0 as i32 && sel_x1 <= x1 as i32;
-        let within_top    = sel_y  >= y0 as i32 && sel_y  <= y1 as i32;
-        let within_bottom = sel_y  >= y0 as i32 && sel_y  <= y1 as i32;
+        let within_left = sel_x >= x0 as i32 && sel_x <= x1 as i32;
+        let within_right = sel_x1 >= x0 as i32 && sel_x1 <= x1 as i32;
+        let within_top = sel_y >= y0 as i32 && sel_y <= y1 as i32;
+        let within_bottom = sel_y >= y0 as i32 && sel_y <= y1 as i32;
 
         if (within_left || within_right) && (within_top || within_bottom) {
             let x = max(sel_x, x0 as i32);
@@ -221,7 +264,12 @@ impl Maparea {
             let height = min(sel_y1, y1 as i32) - y;
 
             if width > 0 && height > 0 {
-                let subpix = self.pix_cache.new_subpixbuf(x as i32, y as i32, width as i32, height as i32);
+                let subpix = self.pix_cache.new_subpixbuf(
+                    x as i32,
+                    y as i32,
+                    width as i32,
+                    height as i32,
+                );
                 let selected_subpix = change_palette(&subpix, self.palette, palette);
                 context.set_source_pixbuf(&selected_subpix, x as f64, y as f64);
                 context.paint();

@@ -24,14 +24,11 @@ impl History {
     }
 
     pub fn undo(&mut self) -> Option<Vec<u8>> {
-        self.prev.pop().map(|elem| {
-            self.next.push(elem);
-        });
-        self.prev.pop()
-            .map_or(Some(self.init.clone()), |elem| {
-                self.prev.push(elem.clone());
-                Some(elem)
-            })
+        self.prev.pop().map(|elem| { self.next.push(elem); });
+        self.prev.pop().map_or(Some(self.init.clone()), |elem| {
+            self.prev.push(elem.clone());
+            Some(elem)
+        })
     }
 
     pub fn update(&mut self, state: Vec<u8>) {

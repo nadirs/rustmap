@@ -27,17 +27,20 @@ use gtk::Builder;
 use config::Config;
 use gui::Gui;
 
-fn main () {
+fn main() {
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
         return;
     }
 
     let config_filename = "rustmap.toml";
-    let mut config_file = File::open(config_filename).expect(&format!("Invalid toml file: {}", config_filename));
+    let mut config_file =
+        File::open(config_filename).expect(&format!("Invalid toml file: {}", config_filename));
     let mut config_string = String::new();
-    let config: Option<Config> = config_file.read_to_string(&mut config_string)
-        .ok().and_then(|_| toml::from_str(&mut config_string).ok());
+    let config: Option<Config> = config_file
+        .read_to_string(&mut config_string)
+        .ok()
+        .and_then(|_| toml::from_str(&mut config_string).ok());
     let builder = Builder::new_from_string(include_str!("builder.ui"));
 
     let mut gui = Gui::new(config, builder);

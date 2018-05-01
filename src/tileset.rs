@@ -5,7 +5,7 @@ use gdk;
 use gdk::prelude::*;
 use gdk_pixbuf::Pixbuf;
 
-use std::cmp::{min,max};
+use std::cmp::{min, max};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -27,7 +27,13 @@ pub struct Tileset {
 }
 
 impl Tileset {
-    pub fn new(width: i32, height: i32, pix: &Pixbuf, blockset: &[u8], widget: DrawingArea) -> Self {
+    pub fn new(
+        width: i32,
+        height: i32,
+        pix: &Pixbuf,
+        blockset: &[u8],
+        widget: DrawingArea,
+    ) -> Self {
         let tileset_pix_cache = Self::build_tileset_pix(width, height, pix, blockset);
         Tileset {
             width: width,
@@ -37,7 +43,8 @@ impl Tileset {
             pix_cache: tileset_pix_cache,
             palette: BASE_PALETTE,
             widget: widget,
-            _max_block_id: (pix.get_width() / TILE_SIZE as i32) as u8 * (pix.get_height() / TILE_SIZE as i32) as u8,
+            _max_block_id: (pix.get_width() / TILE_SIZE as i32) as u8 *
+                (pix.get_height() / TILE_SIZE as i32) as u8,
         }
     }
 
@@ -91,23 +98,39 @@ impl Tileset {
                 if b > max_block_id {
                     continue;
                 }
-                let tile = pix.new_subpixbuf(TILE_SIZE as i32 * (b % tileset_width), TILE_SIZE as i32 * ((b / tileset_width) as i32), TILE_SIZE as i32, TILE_SIZE as i32);
+                let tile = pix.new_subpixbuf(
+                    TILE_SIZE as i32 * (b % tileset_width),
+                    TILE_SIZE as i32 * ((b / tileset_width) as i32),
+                    TILE_SIZE as i32,
+                    TILE_SIZE as i32,
+                );
 
-                context.set_source_pixbuf(&tile, (((i % 4) * TILE_SIZE) + (i / 16) * BLOCK_SIZE) as f64, ((((i / 4) % 4) as i32) * TILE_SIZE as i32) as f64);
+                context.set_source_pixbuf(
+                    &tile,
+                    (((i % 4) * TILE_SIZE) + (i / 16) * BLOCK_SIZE) as f64,
+                    ((((i / 4) % 4) as i32) * TILE_SIZE as i32) as f64,
+                );
                 context.paint();
             }
         })
     }
 
-    fn new_pixbuf_static<F: FnOnce(&cairo::Context)>(width: i32, height: i32, call_on_context: F) -> Pixbuf {
-        let mut surface = cairo::ImageSurface::create(cairo::Format::Rgb24, width, height).expect("Error in Tileset::new_pixbuf_static");
+    fn new_pixbuf_static<F: FnOnce(&cairo::Context)>(
+        width: i32,
+        height: i32,
+        call_on_context: F,
+    ) -> Pixbuf {
+        let mut surface = cairo::ImageSurface::create(cairo::Format::Rgb24, width, height)
+            .expect("Error in Tileset::new_pixbuf_static");
         {
             let context = cairo::Context::new(&surface);
             call_on_context(&context);
         }
 
         let mut data = Vec::with_capacity((width * height * 3) as usize);
-        let surface_data = surface.get_data().expect("Error in Tileset::new_pixbuf_static");
+        let surface_data = surface.get_data().expect(
+            "Error in Tileset::new_pixbuf_static",
+        );
         for b in surface_data.iter().as_slice().chunks(4) {
             data.push(*b.get(2).unwrap());
             data.push(*b.get(1).unwrap());
@@ -118,12 +141,15 @@ impl Tileset {
     }
 
     pub fn coords(&self, index: u8) -> (i32, i32) {
-        ((index as i32 * BLOCK_SIZE as i32) % self.width as i32, (index as i32 * BLOCK_SIZE as i32) / self.width as i32)
+        (
+            (index as i32 * BLOCK_SIZE as i32) % self.width as i32,
+            (index as i32 * BLOCK_SIZE as i32) / self.width as i32,
+        )
     }
 
     pub fn select_tile_at(&mut self, index: u8) {
         let should_select = self.selected.map_or(true, |old| index != old);
-        if ! should_select {
+        if !should_select {
             return;
         }
 
@@ -148,7 +174,12 @@ impl Tileset {
 
     pub fn get_tile_pix(&self, index: u8) -> Pixbuf {
         let (x, y) = self.coords(index);
-        self.pix_cache.new_subpixbuf(x as i32, y as i32, BLOCK_SIZE as i32, BLOCK_SIZE as i32)
+        self.pix_cache.new_subpixbuf(
+            x as i32,
+            y as i32,
+            BLOCK_SIZE as i32,
+            BLOCK_SIZE as i32,
+        )
     }
 
     fn paint(&self, context: &cairo::Context) {
@@ -156,7 +187,12 @@ impl Tileset {
         let width = max(0, min(self.pix_cache.get_width(), x1 as i32) - x0 as i32);
         let height = max(0, min(self.pix_cache.get_height(), y1 as i32) - y0 as i32);
 
-        let subpix = &self.pix_cache.new_subpixbuf(x0 as i32, y0 as i32, width, height);
+        let subpix = &self.pix_cache.new_subpixbuf(
+            x0 as i32,
+            y0 as i32,
+            width,
+            height,
+        );
         context.set_source_pixbuf(subpix, x0 as f64, y0 as f64);
         context.paint();
 
@@ -176,10 +212,10 @@ impl Tileset {
         let sel_x1 = sel_x + BLOCK_SIZE as i32;
         let sel_y1 = sel_y + BLOCK_SIZE as i32;
 
-        let within_left   = sel_x  >= x0 as i32 && sel_x  <= x1 as i32;
-        let within_right  = sel_x1 >= x0 as i32 && sel_x1 <= x1 as i32;
-        let within_top    = sel_y  >= y0 as i32 && sel_y  <= y1 as i32;
-        let within_bottom = sel_y  >= y0 as i32 && sel_y  <= y1 as i32;
+        let within_left = sel_x >= x0 as i32 && sel_x <= x1 as i32;
+        let within_right = sel_x1 >= x0 as i32 && sel_x1 <= x1 as i32;
+        let within_top = sel_y >= y0 as i32 && sel_y <= y1 as i32;
+        let within_bottom = sel_y >= y0 as i32 && sel_y <= y1 as i32;
 
         if (within_left || within_right) && (within_top || within_bottom) {
             let x = max(sel_x, x0 as i32);
@@ -189,7 +225,12 @@ impl Tileset {
             let height = min(sel_y1, y1 as i32) - y;
 
             if width > 0 && height > 0 {
-                let subpix = self.pix_cache.new_subpixbuf(x as i32, y as i32, width as i32, height as i32);
+                let subpix = self.pix_cache.new_subpixbuf(
+                    x as i32,
+                    y as i32,
+                    width as i32,
+                    height as i32,
+                );
                 let selected_subpix = change_palette(&subpix, self.palette, palette);
                 context.set_source_pixbuf(&selected_subpix, x as f64, y as f64);
                 context.paint();

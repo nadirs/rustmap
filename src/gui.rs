@@ -19,10 +19,12 @@ use position::get_event_pos;
 
 fn get_bytes_from_filepath(path: &str) -> Option<Vec<u8>> {
     let mut bytes = Vec::new();
-    File::open(&path).map(|mut f| {
-        let _ = f.read_to_end(&mut bytes);
-        bytes
-    }).ok()
+    File::open(&path)
+        .map(|mut f| {
+            let _ = f.read_to_end(&mut bytes);
+            bytes
+        })
+        .ok()
 }
 
 
@@ -35,7 +37,9 @@ pub struct Gui {
 
 impl Gui {
     pub fn new(config: Option<Config>, builder: Builder) -> Self {
-        let window: Window = builder.get_object("window").expect("No window found in builder");
+        let window: Window = builder.get_object("window").expect(
+            "No window found in builder",
+        );
 
         Gui {
             config: Rc::new(RefCell::new(config.unwrap_or_default())),
@@ -115,7 +119,10 @@ impl Gui {
 
     fn save_map_as(maparea: &Option<Maparea>, config: &mut Config, window: &Window) {
         let file_dialog = gtk::FileChooserDialog::new(
-            Some("Save As"), Some(window), gtk::FileChooserAction::Save);
+            Some("Save As"),
+            Some(window),
+            gtk::FileChooserAction::Save,
+        );
         file_dialog.add_button("OK", gtk::ResponseType::Ok.into());
         file_dialog.add_button("Cancel", gtk::ResponseType::Cancel.into());
         let response = file_dialog.run();
@@ -128,7 +135,9 @@ impl Gui {
             /* keep filename for future use */
             Gui::save_map(maparea, filename.clone());
 
-            config.recent.as_mut().map(|recent| recent.map_path = Some(filename));
+            config.recent.as_mut().map(|recent| {
+                recent.map_path = Some(filename)
+            });
         }
     }
 
@@ -157,18 +166,39 @@ impl Gui {
             let config = self.config.borrow();
             let map_height = config.recent.as_ref().unwrap().map_height.unwrap();
             let map_width = config.recent.as_ref().unwrap().map_width.unwrap();
-            let mapset = config.recent.as_ref().and_then({
-                |recent| recent.map_path.as_ref()
-            }).map(|map_path| {
-                self.load_map(map_path)
-            }).expect("Error on loading mapset");
+            let mapset = config
+                .recent
+                .as_ref()
+                .and_then({
+                    |recent| recent.map_path.as_ref()
+                })
+                .map(|map_path| self.load_map(map_path))
+                .expect("Error on loading mapset");
 
-            let tileset_path = config.recent.as_ref().unwrap().tileset_path.as_ref().expect("No tileset_path provided");
-            let blockset_path = config.recent.as_ref().unwrap().blockset_path.as_ref().expect("No blockset_path provided");
+            let tileset_path = config
+                .recent
+                .as_ref()
+                .unwrap()
+                .tileset_path
+                .as_ref()
+                .expect("No tileset_path provided");
+            let blockset_path = config
+                .recent
+                .as_ref()
+                .unwrap()
+                .blockset_path
+                .as_ref()
+                .expect("No blockset_path provided");
 
-            let lbl_coords: Label = self.builder.get_object("lblCoords").expect("No lblCoords found in builder");
-            let tileset_widget: DrawingArea = self.builder.get_object("tileset").expect("No tileset found in builder");
-            let maparea_widget: DrawingArea = self.builder.get_object("maparea").expect("No maparea found in builder");
+            let lbl_coords: Label = self.builder.get_object("lblCoords").expect(
+                "No lblCoords found in builder",
+            );
+            let tileset_widget: DrawingArea = self.builder.get_object("tileset").expect(
+                "No tileset found in builder",
+            );
+            let maparea_widget: DrawingArea = self.builder.get_object("maparea").expect(
+                "No maparea found in builder",
+            );
 
             // TODO need better error handling
             let blockset: Vec<u8> = get_bytes_from_filepath(blockset_path).unwrap();
@@ -177,7 +207,8 @@ impl Gui {
             let tileset = Tileset::from_data(tileset_widget, &blockset, &tileset_pix);
             tileset.borrow_mut().select_tile_at(0);
 
-            self.maparea = Maparea::from_data(maparea_widget, map_width, map_height, mapset, tileset);
+            self.maparea =
+                Maparea::from_data(maparea_widget, map_width, map_height, mapset, tileset);
             self.maparea.borrow().as_ref().map(|maparea| {
                 let lbl_coords = lbl_coords.clone();
                 maparea.widget.connect_motion_notify_event(move |_, ev| {

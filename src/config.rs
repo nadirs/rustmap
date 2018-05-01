@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
-#[derive(Debug,Default,Serialize,Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Config {
-    pub recent: Option<RecentSettings>
+    pub recent: Option<RecentSettings>,
 }
 
-#[derive(Default,Debug,Serialize,Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct RecentSettings {
     pub map_path: Option<PathBuf>,
     pub map_width: Option<u8>,

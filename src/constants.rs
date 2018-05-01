@@ -16,28 +16,11 @@ pub fn rgb_triple_from(chunks: &[u8]) -> RgbTriple {
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct RgbPalette(pub RgbTriple, pub RgbTriple, pub RgbTriple, pub RgbTriple);
 
-pub const BASE_PALETTE: RgbPalette = RgbPalette(
-    (0,0,0),
-    (0x55,0x55,0x55),
-    (0xaa,0xaa,0xaa),
-    (0xff,0xff,0xff),
-);
+pub const BASE_PALETTE: RgbPalette =
+    RgbPalette((0, 0, 0), (85, 85, 85), (170, 170, 170), (255, 255, 255));
 
-pub const HOVER_PALETTE: RgbPalette = RgbPalette(
-    (0,0,0),
-    (13,73,80),
-    (46,138,106),
-    (253,244,152),
+pub const HOVER_PALETTE: RgbPalette =
+    RgbPalette((0, 20, 40), (13, 73, 80), (46, 138, 106), (253, 244, 152));
 
-//    (0,0,0),
-//    (9, 92, 104),
-//    (196, 125, 0),
-//    (234, 240, 102),
-);
-
-pub const SELECT_PALETTE: RgbPalette = RgbPalette(
-    (0,0,0),
-    (243, 84, 57),
-    (246, 141, 92),
-    (244, 210, 122),
-);
+pub const SELECT_PALETTE: RgbPalette =
+    RgbPalette((40, 0, 20), (243, 84, 57), (246, 141, 92), (244, 210, 122));

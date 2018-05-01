@@ -26,5 +26,13 @@ pub fn change_palette(tile: &Pixbuf, from_pal: RgbPalette, to_pal: RgbPalette) -
             pxs.push(blue);
         }
     };
-    Pixbuf::new_from_vec(pxs, tile.get_colorspace(), false, tile.get_bits_per_sample(), tile.get_width(), tile.get_height(), tile.get_rowstride())
+    Pixbuf::new_from_vec(
+        pxs,
+        tile.get_colorspace(),
+        false,
+        tile.get_bits_per_sample(),
+        tile.get_width(),
+        tile.get_height(),
+        tile.get_rowstride(),
+    )
 }

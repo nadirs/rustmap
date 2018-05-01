@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod test {
     #[test]
-    fn it_works() {
-    }
+    fn it_works() {}
 }
