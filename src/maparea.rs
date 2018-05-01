@@ -89,17 +89,17 @@ impl Maparea {
             let ref widget = maparea.widget;
 
             widget.connect_motion_notify_event(clone!(cell => move |el, ev| {
-                cell.borrow_mut().as_mut().unwrap().motion_notify(el, ev);
+                cell.borrow_mut().as_mut().map(|c| c.motion_notify(el, ev));
                 Inhibit::default()
             }));
 
             widget.connect_button_press_event(clone!(cell => move|el, ev| {
-                cell.borrow_mut().as_mut().unwrap().button_press(el, ev);
+                cell.borrow_mut().as_mut().map(|c| c.button_press(el, ev));
                 Inhibit::default()
             }));
 
             widget.connect_draw(clone!(cell => move |_, context| {
-                cell.borrow_mut().as_mut().unwrap().paint(&context);
+                cell.borrow().as_ref().map(|c| c.paint(&context));
                 Inhibit::default()
             }));
         });
